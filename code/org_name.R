@@ -1,7 +1,7 @@
 # this script extracts some basic org_name info, prior to hand coding
 #
 # # FIXME
-# source("setup.R")
+source("setup.R")
 #
 #
 # d <- filter(comments_all) %>%

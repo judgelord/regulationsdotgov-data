@@ -1,12 +1,13 @@
  source("setup.R")
-
-#TODO write this script so that it just takes a vector of docket ids by replacing docket with dockets in the walk(dockets)
+library(regulationsdotgov)
+ #TODO write this script so that it just takes a vector of docket ids by replacing docket with dockets in the walk(dockets)
 dockets <- c(
-  "IRS-2024-0026"
-  # "OCC-2023-0017",
-  #   "DOC-2021-0007",
-  # "CDC-2020-0024",
-  # "FTC-2023-0037",
+  "FDA-2021-N-0471",
+  "FDA-2024-D-2977",
+  "EPA-HQ-OLEM-2021-06090",
+  "EPA-HQ-OAR-2021-0643",,
+  "NRC-2019-0062",
+  "EERE-2010-BT-STD-0031"
   # "USDA-2020-0009",
   # "NPS-2022-0004",
   # "IRS-2024-0026",
@@ -27,7 +28,7 @@ agency <- str_extract(docket, "[A-Z]+") # str_remove(dockets, "-.*") #FIXME WHIC
 
 # LOAD DATA FROM DATA FOLDER
 # comment metadata
-here::here("data",
+here::here("data", "metadata",
            agency,
            docket,
            paste(docket, "comments.rda", sep = "_")) |>
@@ -35,7 +36,7 @@ here::here("data",
   load()
 
 # comment metadata (details )
-here::here("data", agency, docket,
+here::here("data", "metadata", agency, docket,
 paste(docket, "comment_details.rda", sep = "_")) |>
   str_replace("rulemaking", "regulationsdotgov-data") |>
   load()
@@ -340,8 +341,7 @@ if (!dir.exists(here::here("data", "datasheets") ) ){
 write_comment_sheets <- function(docket){
   d %>%
     filter(docket_id == docket) %>%
-    write_csv(file = here::here("data",
-                                "datasheets",
+    write_csv(file = here::here("data", "datasheets",
                                 agency,
                                 #str_extract("^[A-Z]"), # agency
                                 str_c(docket, "_org_comments.csv")))

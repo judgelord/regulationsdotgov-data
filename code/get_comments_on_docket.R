@@ -11,31 +11,24 @@ library(magrittr)
 library(devtools)
 
 # keys saved up one directory
-load("../keys.rda")
 keys <<- c(tail(keys, -1), head(keys, 1))
 
 
 
-#TODO write this script so that it just takes a vector of docket ids by replacing docket with dockets in the walk(dockets)
 dockets <- c(
-  "OCC-2023-0017"
-#   "DOC-2021-0007",
-# "CDC-2020-0024",
-# "FTC-2023-0037",
-# "USDA-2020-0009",
-# "NPS-2022-0004",
-# "IRS-2024-0026",
-# "BSEE-2015-0002",
-# "EPA-HQ-OW-2022-0901"
+  "FDA-2021-N-0471",
+ "FDA-2024-D-2977",
+"EPA-HQ-OLEM-2021-06090",
+"EPA-HQ-OAR-2021-0643",
+"NRC-2019-0062",
+"EERE-2010-BT-STD-0031"
   )
 agencies <- str_extract(dockets, "[A-Z]+") # str_remove(dockets, "-.*") #FIXME WHICH ONE DO WE WANT
 
 # create directories for each agency
-walk(here::here("data", agencies), dir.create)
-# for one docket
-walk(here::here("data", agency, docket), dir.create)
-# for many dockets
-walk(here::here("data", agencies, dockets), dir.create)
+walk(here::here("data", "metadata", agencies), dir.create)
+# for dockets
+walk(here::here("data", "metadata", agencies, dockets), dir.create)
 
 #######################################################
 #### Get metadata for comments on a document or docket
@@ -47,7 +40,7 @@ save_comments <- function(docket){
   documents <- get_documents(docket, api_keys = keys)
 
 
-  save(documents, file = here::here("data",
+  save(documents, file = here::here("data", "metadata",
                                    str_extract(docket, "[A-Z]+"), # agency
                                    docket,
                                    paste(docket, "documents.rda", sep = "_")
@@ -77,7 +70,7 @@ save_comments <- function(docket){
 
   comments <- c  #|> filter(is.na(subtype )) # NA subtype = normal PR?
 
-  save(comments, file = here::here("data",
+  save(comments, file = here::here("data", "metadata",
                              str_extract(docket, "[A-Z]+"), # agency
                              docket,
                             paste(docket, "comments.rda", sep = "_")
@@ -95,7 +88,7 @@ walk(dockets,  # or dockets
 
 save_comment_details <- function(docket){
 
-  load(here::here("data",
+  load(here::here("data", "metadata",
                   str_extract(docket, "[A-Z]+"), # agency
                   docket,
                   paste(docket, "comments.rda", sep = "_")
@@ -103,7 +96,7 @@ save_comment_details <- function(docket){
 
   comment_details <- get_comment_details(comments$id, api_keys = keys)
 
-  save(comment_details, file = here::here("data",
+  save(comment_details, file = here::here("data", "metadata",
                             str_extract(docket, "[A-Z]+"), # agency
                             docket,
                             paste(docket, "comment_details.rda", sep = "_")
@@ -117,8 +110,6 @@ walk(dockets,
 
 # THIS IS GOOD ENOUGH FOR NOW
 # In the rulemaking repo, the make_comments_codeing_sheet.R file pulls in a comments.rda and a comment_details.rda file for each docket
-
-
 
 
 
@@ -162,10 +153,10 @@ download_comments(attachment_urls )
 
 
 # CONVERT TO TXT
-files <- list.files("comments", recursive = T)
+files <- list.files(here::here("data", "files"),  recursive = T)
 length(files)
 head(files)
-converted <- list.files("comment_text", recursive = T) |> str_replace("txt", "pdf")
+converted <- list.files(here::here("data", "files"),  recursive = T) |> str_replace("txt", "pdf")
 head(converted)
 # files not converted
 not_converted <- files[!files %in% converted]

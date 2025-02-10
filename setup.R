@@ -1,11 +1,20 @@
 options(stringsAsFactors = FALSE)
 
-requires <- c("gmailr",
-              "DescTools",
+
+
+load("../keys.rda")
+
+if(!"regulationsdotgov" %in% installed.packages() ){
+ devtools::install_github("https://github.com/judgelord/regulationsdotgov", force = T)
+}
+
+library(regulationsdotgov)
+
+requires <- c(#"gmailr",
+#              "DescTools",
               "tidyverse",
               "dplyr",
-              "gdata",
-              "magrittr",
+#              "gdata",
               "reshape2",
               "scales",
               "magrittr",
@@ -15,19 +24,19 @@ requires <- c("gmailr",
               "gridExtra",
               "httr",
               "jsonlite",
-              "tm",
+#              "tm",
               "tidytext",
-              "topicmodels",
+ #             "topicmodels",
               #"textfeatures",
-              "cleanNLP",
+#              "cleanNLP",
               # "clusters",
               # "rjags",
               # "bayesmix",
               # "MCMCpack",
-              "gtools",
+ #             "gtools",
               #"textreadr",
               "pdftools",
-              "beepr",
+#              "beepr",
               "tidyverse",
               "kableExtra",
               "googledrive",
@@ -57,13 +66,13 @@ library(stringr)
 library(scales)
 library(here)
 library(httr)
-library(tm)
+# library(tm)
 library(tidytext)
 #library(topicmodels)
 #library(textfeatures)
 library(cleanNLP)
 library(pdftools)
-library(beepr)
+# library(beepr)
 library(tidyverse)
 library(purrr)
 library(googledrive)
