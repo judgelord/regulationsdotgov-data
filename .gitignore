@@ -36,3 +36,5 @@ rsconnect/
 data
 regulationsdotgov-data.Rproj
 Icon
+.DS_Store
+Icon
