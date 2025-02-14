@@ -6,28 +6,77 @@ source("setup.R")
   searchTerm =  c("national congress of american indians", "cherokee nation", "climate justice", "environmental justice")
   searchTerm = c("racial", "latino")
   searchTerm = c("racial")
+  searchTerm = "climate change"
+
+  # banned words
+  searchTerm = c(
+    # https://www.nytimes.com/2025/02/11/us/politics/trump-wordplay.html?smid=nytcore-ios-share&referringSource=articleShare
+    "gender ideology",
+    "undocumented",
+    "alien",
+    "Equity",
+    "Gender",
+    "Transgender",
+    "Nonbinary",
+    "Pregnant people",
+    "Assigned male at birth",
+    "Antiracist",
+    "Trauma",
+    "Hate speech",
+    "Intersectional",
+    "Multicultural",
+    "Oppression",
+    "D.E.I.",
+    #https://www.washingtonpost.com/science/2025/02/04/national-science-foundation-trump-executive-orders-words/
+    "gender",
+                 "gender identity",
+                 "transgender",
+                 "pregnant person",
+                 "pregnant people",
+                 "LGBT",
+                 "transsexual",
+                 "nonbinary",
+                 "assigned male at birth",
+                 "biologically male",
+                 "biologically female",
+                 "he/she/they/them",
+                 "diversity",
+                 "equity",
+                 "inclusion",
+                 "accessibility",
+                 "Women",
+                 "Diverse",
+                 "Institutional",
+                 "Historically",
+                 # NOAA - https://www.nytimes.com/2025/02/10/climate/noaa-trump-executive-orders.html
+                 "climate science",
+                 "climate crisis",
+                 "clean energy",
+                 "pollution",
+                 "environmental quality"
+                 )
 
   searchTerm = c(
     "Critical Race Theory",
-  #"DACA",
+  "DACA",
   "Diversity, equity",
   "Illegal Alien",
-  #"MENA"
+  "MENA",
   "Mexican Cartel" ,
   "Muslim",
-  #"Racism",
-  #"Racist",
+  "Racism",
+  "Racist",
   "Slavery",
   "Unaccompanied Alien Childen",
   "White Privilege",
   "Affirmative Action",
-  #"African American",
+  "African American",
   "Black american",
   "Black woman",
   "Black men",
   "Arab American",
   "Border Crisis",
-  #"Drug Cartel" ,
+  "Drug Cartel" ,
   "Ethnicity",
   "Hispanic",
   "Meritocracy",
@@ -45,9 +94,10 @@ source("setup.R")
   "Immigration")
 
   documents = c("documents", "comments")
+  # documents = "comments"
 
 
-  search_to_rda <- function(searchTerm, documents){
+  search_to_rda <- function(searchTerm, documents, lastModifiedDate = Sys.Date() ){
 
     directory <- here::here("data", "search", searchTerm)
     dir.create(directory)
@@ -55,15 +105,29 @@ source("setup.R")
 
     if( !file.exists(file) ){
 
-      d <- get_searchTerm(searchTerm, documents, api_keys = keys)
+      # TESTING date modification
+      # lastModifiedDate = "2025-02-02T04:59:59Z"
+      # / testing
 
-      save(d, file = file)
+      d <- get_searchTerm(searchTerm,
+                          lastModifiedDate = lastModifiedDate,
+                          documents,
+                          api_keys = keys)
+
+      message(min(d$postedDate))
+
+      comments <- d
+
+      save(comments, file = file)
     }
   }
 
 # map over search terms for each document type
   for(documents in documents){
-    purrr::walk(searchTerm, documents, .f = search_to_rda)
+    purrr::walk(searchTerm,
+                documents,
+                #lastModifiedDate = "2025-02-02T04:59:59Z",
+                .f = search_to_rda)
   }
 
 

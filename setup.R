@@ -5,7 +5,12 @@ options(stringsAsFactors = FALSE)
 load("../keys.rda")
 
 if(!"regulationsdotgov" %in% installed.packages() ){
+  install.packages("regulationsdotgov")
+  remove.packages("regulationsdotgov")
+  library(regulationsdotgov)
  devtools::install_github("https://github.com/judgelord/regulationsdotgov", force = T)
+ install.packages("regulationsdotgov")
+
 }
 
 library(regulationsdotgov)
