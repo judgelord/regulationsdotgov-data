@@ -144,11 +144,13 @@ for (agency in agencies) {
           message("Directory already exists: ", dir_path)
         }
       })
-      dir_create(dir_paths[new_dirs])
-      message("Created new directories for ", agency, ": ", paste(dir_paths[new_dirs], collapse = ", "))
-    } else {
 
-      message("All directories already exist for ", agency)
+      dir_create(dir_paths[new_dirs])
+
+      message("Created new directories for ", agency, ": ", paste(dir_paths[new_dirs], collapse = ", "))
+
+      }} else {
+        message("All directories already exist for ", agency)
     }
   }, error = function(e) {
     message("No dockets.rda file found for ", agency)
