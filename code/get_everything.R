@@ -30,59 +30,73 @@ library(magrittr)
 load("../keys.rda")
 
 
-# the agencies we already have
+# the dockets we already have
+#FIXME document folders and getting recorded as docket forlders here, causing incorrect and unnecessary calls
 dockets <- list.dirs("data/metadata")
 
 dockets <- tibble(
-  agencies = str_extract(dockets, ".*/") |> str_remove("/$") |> str_remove(".*/"),
+  agency = str_extract(dockets, ".*/") |> str_remove("/$") |> str_remove(".*/"),
   docket = str_remove(dockets, ".*/")
 )
 
-dockets <- dockets |>  filter(str_detect(docket, "-"))
+dockets <- dockets |>
+  filter(str_detect(docket, "-"),
+         !str_detect(agency, "-"))
+
+# PICK AN ORDER
 dockets %<>% arrange(rev(agency))
+dockets %<>% arrange(agency)
 
-problem_documents <- tribble(
-  ~docket, ~document, ~objectId,
-  "WHD-2017-0002", "WHD-2017-0002-0001",  "0900006482969fbd",
-  "WHD-2017-0003", "WHD-2017-0003-0001", "0900006482cdbe54",
-  "WHD-2019-0001", "WHD-2019-0001-0001", "0900006483b173dc",
-  "PHMSA-2021-0039", "PHMSA-2021-0039-2101", "0900006485c21b4f",
-)
 
-dockets %<>%
-  filter(!docket %in% problem_documents$docket)
+
+agencies <- dockets$agency
+
+
+## FIXME Commenting this out for now becasue these no longer seem to be problems
+# problem_documents <- tribble(
+#   ~docket, ~document, ~objectId,
+#   "WHD-2017-0002", "WHD-2017-0002-0001",  "0900006482969fbd", # expected 140-214k
+#   "WHD-2017-0003", "WHD-2017-0003-0001", "0900006482cdbe54", # expected 218-376k https://www.regulations.gov/docket/WHD-2017-0003
+#   "WHD-2019-0001","WHD-2019-0001-0001", "0900006483b173dc",
+#   "PHMSA-2021-0039", "PHMSA-2021-0039-2101", "0900006485c21b4f",
+#   "PHMSA-2021-0058", "PHMSA-2021-0058-0002", "0900006484e3545a",
+#   "NHTSA-2022-0079", "NHTSA-2022-0079-0015", "090000648637d7c0" # expecting 18,317 - https://www.regulations.gov/document/NHTSA-2022-0079-0015
+#   )
+#
+# dockets %<>%
+#   filter(!docket %in% problem_documents$docket)
 
 
 
 # or select a new agency
-agencies <- "CFPB"
+agency <- "CFPB"
 
 
 # create directories for each agency
-walk(here::here("data", "metadata",  agencies), dir.create)
+walk(here::here("data", "metadata",  agency), dir.create)
 
 
 # SAVE IN SEPERATE FILES IN DOCKET FOLDERS
 save_dockets <- function(agency){
-  message (agency)
+  message(agency)
   dockets <- map_dfr(agency, get_dockets, api_keys = keys)
   message(paste("|", agency, "| n =", nrow(dockets), "|"))
   # agency <- "NOAA"
   # dockets <- metadata
 
   file <- here::here("data", "metadata",
-                    agency,
-                    paste0(agency, "_dockets.rda"))
+                     agency,
+                     paste0(agency, "_dockets.rda"))
 
   save(dockets, file = file)
 }
 
+# COLLECT DOCKET METADATA WE DON'T HAVE FOR AGENCIES
+for (agency in agencies){
 
-
-# collect dockets for agencies we don't already have
-for (agency in agencies) {
-
-  file <- here::here("data", "metadata", agency, paste0(agency, "_dockets.rda"))
+  file <- here::here("data", "metadata",
+                     agency,
+                     paste0(agency, "_dockets.rda"))
 
   if (!file.exists(file)) {
 
@@ -94,9 +108,6 @@ for (agency in agencies) {
     })
   } else{message(agency, "_dockets.rda file already exists.")}
 }
-
-
-
 
 # all agency folders
 # agency <- list.dirs("data", "metadata",  recursive = F) |> str_remove("data/")
@@ -126,7 +137,10 @@ for (agency in agencies) {
     }, error = function(e) {
     message("No dockets.rda file found for ", agency)
   })
+  #walk(here::here("data", "metadata",  agency, dockets$id), possibly(dir.create, otherwise = print("directory exists"))) #FIXME Currently this doesn't nest the data for multiple agencies
 }
+
+
 
 
 #### Get documents from each docket
@@ -136,18 +150,18 @@ for (agency in agencies) {
 save_documents <- function(docket, agency){
 
   file <- here::here("data", "metadata",
-                    agency, #str_extract("[A-Z]"), docket),
-                    # should we require an agency argument here, or is there a reliable way to split agencies and dockets, e.g., by looking for years -19[0-9][0-9]- or -20[0-9][0-9]-
-                    docket,
-                    paste0(docket, "_documents.rda"))
+                     agency, #str_extract("[A-Z]"), docket),
+                     # should we require an agency argument here, or is there a reliable way to split agencies and dockets, e.g., by looking for years -19[0-9][0-9]- or -20[0-9][0-9]-
+                     docket,
+                     paste0(docket, "_documents.rda"))
 
 
   message (paste(Sys.time(), agency, docket))
 
   if(!file.exists(file)){
-  documents <- map_dfr(docket, get_documents, api_keys = keys)
-  message(paste("|", docket, "| n =", nrow(documents), "|"))
-  save(documents, file = file)
+    documents <- map_dfr(docket, get_documents, api_keys = keys)
+    message(paste("|", docket, "| n =", nrow(documents), "|"))
+    save(documents, file = file)
   } else {
     message(paste(file, "already exists"))
   }
@@ -156,7 +170,6 @@ save_documents <- function(docket, agency){
 
 # loop over a vector of agencies
 for(agency in agencies){
-
   # load dockets
   load(here::here("data", "metadata",  agency, paste0(agency, "_dockets.rda")))
 
@@ -166,18 +179,20 @@ for(agency in agencies){
   downloaded <- list.files(path = here::here("data", "metadata",agency), pattern = "_documents.rda", recursive = TRUE) |>
     str_remove_all(".*/|_documents.rda") # I added the downloaded object back in -MK
 
+  # if dockets metadata is not empty & docket metadata was not already downloaded, save documents for each docket
+  if("id" %in% names(dockets)){
 
-# if dockets metadata is not empty & docket metadata was not already downloaded, save documents for each docket
-if("id" %in% names(dockets)){
+    dockets %<>% filter(!(id %in% downloaded))
 
-dockets %<>% filter(!(id %in% downloaded))
-
-walk2(dockets$id, dockets$agencyId, possibly(save_documents,
-                                             otherwise = print("documents.rda file already exists")))
-} else{
-  message(paste(agency, "has no document metadata returned by regulations.gov"))
+    walk2(dockets$id, dockets$agencyId, possibly(save_documents,
+                                                 otherwise = print("documents.rda file already exists")))
+  } else{
+    message(paste(agency, "has no document metadata returned by regulations.gov"))
+  }
 }
-}
+
+
+
 
 
 
@@ -199,7 +214,7 @@ save_docs <- function(docket){
   if( file.exists(doc_file) ){
     load(doc_file) #FIXME  update this with new docs since most recent document date
   } else {
-    documents <- get_documents(docket, api_keys = keys)
+    documents <- get_documents(docket, api_keys = keys) |> distinct()
 
     save(documents, file = doc_file)
   }
@@ -291,14 +306,23 @@ save_comments <- function(docket){
   # for testing
   # docket <- dockets$docket[1]
   doc_file <- here::here("data", "metadata",
-                     str_extract(docket, "[A-Z]+"), # agency
-                     docket,
-                     paste(docket, "documents.rda", sep = "_"))
+                         str_extract(docket, "[A-Z]+"), # agency
+                         docket,
+                         paste(docket, "documents.rda", sep = "_"))
 
   if( file.exists(doc_file) ){
+
     load(doc_file) #FIXME  update this with new docs since most recent document date
+
+    documents %<>% distinct()
+
+    # FIXME -- TEMPORARY uniquing comment files saved with rbind
+    # save(documents, file = doc_file)
+
   } else {
-    documents <- get_documents(docket, api_keys = keys)
+    message("getting documents")
+    documents <- get_documents(docket, api_keys = keys) |>
+      distinct()
 
     save(documents, file = doc_file)
   }
@@ -319,17 +343,17 @@ save_comments <- function(docket){
     message(document)
 
     doc_dir <- here::here("data", "metadata",
-                      str_extract(docket, "[A-Z]+"), # agency
-                      docket,
-                      document)
+                          str_extract(docket, "[A-Z]+"), # agency
+                          docket,
+                          document)
 
     dir.create(doc_dir)
 
     comments_on_document_file =  here::here("data", "metadata",
-                       str_extract(docket, "[A-Z]+"), # agency
-                       docket,
-                       document,
-                       paste(document, "comments.rda", sep = "_"))
+                                            str_extract(docket, "[A-Z]+"), # agency
+                                            docket,
+                                            document,
+                                            paste(document, "comments.rda", sep = "_"))
 
     ## DETAILS
     det_file <- str_replace(comments_on_document_file, "comments.rda", "comment_details.rda")
@@ -338,24 +362,35 @@ save_comments <- function(docket){
     ## If we need comment metadata
     if( !file.exists(comments_on_document_file) ){
 
-    comments <- get_commentsOnId(objectId, api_keys = keys)
+      message("getting comments")
 
-    save(comments,
-         file = comments_on_document_file)
+      comments <- get_commentsOnId(objectId, api_keys = keys)
+
+      save(comments,
+           file = comments_on_document_file)
 
     } else {
       load(comments_on_document_file)
+
+      comments %<>% distinct()
+
+      # FIXME -- TEMPORARY uniquing comment files saved with rbind
+      #save(comments, file = comments_on_document_file)
     }
 
 
 
-    if(  nrow(comments) > 1000 ){
-      save(det_file, file = det_file |> str_replace("details", "MoreThan1k"))
+    if(  nrow(comments) > 10000 ){
+      save(det_file, file = det_file |> str_replace("details", "MoreThan10k"))
     }
 
     # GET DETAILS
-    if( !file.exists(det_file) & nrow(comments) <= 1000 & "id" %in% colnames(comments)){
-      comment_details <- get_comment_details(comments$id, api_keys = keys)
+    if( !file.exists(det_file) & nrow(comments) <= 10000 & "id" %in% colnames(comments)){
+
+      message("getting comment details")
+
+      comment_details <- get_comment_details(comments$id, api_keys = keys) |>
+        distinct()
 
       save(comment_details, file = det_file)
     }
@@ -364,7 +399,7 @@ save_comments <- function(docket){
 
   # save comments on specific documents
   walk2(d$commentOnId, d$id,
-        possibly(save_commentsOnId, otherwise = message("FAIL")))
+        possibly(save_commentsOnId, otherwise = message("FAIL"))) #FIXME WE NEED A BETTER MESSAGE
 
 }
 
