@@ -38,12 +38,47 @@ df$n <- ns
 
 df %<>% arrange(-n)
 
+
+filter(df, n > 10000) |> pull(path) |>
+  str_remove_all(".*/|_c.*") #|> str_c(collapse = ", ")
+
+
+
 # bulk csv files already in folder
 bulk <- c(
-"FDA-2021-N-1349-0001",
-"ATF-2021-0001-0001",
-"WHD-2022-0003-0001",
+  "FDA-2021-N-1349-0001",
+  "ATF-2021-0001-0001",
+  "WHD-2022-0003-0001",
+  "FHWA-2021-0004-0001",
+  "BSEE-2018-0002-0001"
 )
 
-head(df, 10) |> pull(path) |>
-  str_remove_all(".*/|_c.*") #|> str_c(collapse = ", ")
+csvs <- list.files(pattern = ".*_comment_details.csv", recursive = T)
+
+csv_to_rda <- function(csv){
+
+  message(csv)
+
+  rda_path <- csv |> str_replace("_comment_details.csv", "_comment_details.rda")
+
+  comment_details <- read_csv(csv)
+
+  if(!file.exists(rda_path) ){
+
+    save(comment_details,
+         file = rda_path)
+  }
+
+}
+
+walk(csvs, csv_to_rda)
+
+
+# API TYPE
+comment_details$attachments |> head(2)
+
+# BULK TYPE
+
+comment_details %<>% drop_na(`Attachment Files`)
+
+comment_details$`Attachment Files` |> head(4)
