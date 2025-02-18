@@ -114,11 +114,24 @@ for (agency in agencies){
 
 # create directories for each docket
 for (agency in agencies) {
-
   message(agency)
 
   tryCatch({
+
+    suppressWarnings({
+
     load(here::here("data", "metadata", agency, paste0(agency, "_dockets.rda")))
+    })
+
+    if (!"id" %in% colnames(dockets)) {
+      message("No 'id' column found in ", agency, "_dockets.rda.")
+      next
+    }
+
+    dir_paths <- here::here("data", "metadata", agency, dockets$id)
+    new_dirs <- !sapply(dir_paths, dir.exists)
+
+    if (any(new_dirs)) {
 
     if ("id" %in% colnames(dockets)) {
       walk(dockets$id, ~ {
@@ -131,13 +144,15 @@ for (agency in agencies) {
           message("Directory already exists: ", dir_path)
         }
       })
+      dir_create(dir_paths[new_dirs])
+      message("Created new directories for ", agency, ": ", paste(dir_paths[new_dirs], collapse = ", "))
     } else {
-      message("No 'id' column found in", agency,"_dockets.rda.")
+
+      message("All directories already exist for ", agency)
     }
-    }, error = function(e) {
+  }, error = function(e) {
     message("No dockets.rda file found for ", agency)
   })
-  #walk(here::here("data", "metadata",  agency, dockets$id), possibly(dir.create, otherwise = print("directory exists"))) #FIXME Currently this doesn't nest the data for multiple agencies
 }
 
 
