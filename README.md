@@ -21,7 +21,7 @@ This repository contains documentation and code for constructing a directory of 
    - [agency]/
       - [docket] /
          - [document].pdf
-         - [document].htm (see #7)
+         - [document].htm (see issue [#7](#7) )
          - [document]/
             - [comment_id1_1].pdf  (or whatever formats exist for attachment 1 --- most comments have zero attachments, few have more than one)
             - [comment_id1_2].doc 
