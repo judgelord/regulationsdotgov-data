@@ -2,35 +2,38 @@ options(stringsAsFactors = FALSE)
 
 
 
-load("../keys.rda")
+# keys saved up one directory from this project folder
+# load("../keys.rda") # not everyone has keys, so we can load them in individual scripts
 
-if(!"regulationsdotgov" %in% installed.packages() ){
+
+# If updating package
+if(F){
   install.packages("regulationsdotgov")
   remove.packages("regulationsdotgov")
-  library(regulationsdotgov)
- devtools::install_github("https://github.com/judgelord/regulationsdotgov", force = T)
- install.packages("regulationsdotgov")
-
+  library(regulationsdotgov) # confirm uninstall
 }
 
-library(regulationsdotgov)
+if(!"regulationsdotgov" %in% installed.packages() ){
+  devtools::install_github("https://github.com/judgelord/regulationsdotgov", force = T)
+  install.packages("regulationsdotgov")
+}
+
 
 requires <- c(#"gmailr",
 #              "DescTools",
               "tidyverse",
-              "dplyr",
 #              "gdata",
-              "reshape2",
-              "scales",
+              #"reshape2",
+              #"scales",
               "magrittr",
-              "XML",
-              "stringr",
+              #"XML",
+              #"stringr",
               "here",
-              "gridExtra",
+              #"gridExtra",
               "httr",
-              "jsonlite",
+              "jsonlite"
 #              "tm",
-              "tidytext",
+              #"tidytext",
  #             "topicmodels",
               #"textfeatures",
 #              "cleanNLP",
@@ -40,12 +43,13 @@ requires <- c(#"gmailr",
               # "MCMCpack",
  #             "gtools",
               #"textreadr",
-              "pdftools",
+              #"pdftools",
 #              "beepr",
-              "tidyverse",
-              "kableExtra",
-              "googledrive",
-              "googlesheets4")
+              #"tidyverse",
+              #"kableExtra",
+              #"googledrive",
+              #"googlesheets4"
+)
 to_install <- c(requires %in% rownames(installed.packages()) == FALSE)
 install.packages(c(requires[to_install], "NA"), repos = "https://cloud.r-project.org/" )
 rm(requires, to_install)
@@ -61,43 +65,26 @@ scale_color_discrete <- function(...)
   scale_color_viridis_d(...)
 scale_fill_discrete <- function(...)
   scale_fill_viridis_d(...)
-library(gridExtra)
+#library(gridExtra)
 library(jsonlite)
-
 library(magrittr)
-library(XML)
-library(stringr)
+#library(XML)
+#library(stringr)
 #library(reshape2)
-library(scales)
+#library(scales)
 library(here)
 library(httr)
 # library(tm)
-library(tidytext)
+#library(tidytext)
 #library(topicmodels)
 #library(textfeatures)
-library(cleanNLP)
-library(pdftools)
+#library(cleanNLP)
+#library(pdftools)
 # library(beepr)
-library(tidyverse)
-library(purrr)
-library(googledrive)
-library(googlesheets4)
+# library(googledrive)
+# library(googlesheets4)
 # library(textreadr)
 
-knitr::opts_chunk$set(echo = TRUE,
-                      cache = FALSE,
-                      fig.width=8.5, fig.align = 'center', fig.path='Figs/',
-                      warning=FALSE, message=FALSE)
-
-
-library(tidyverse)
-library(magrittr)
-library(tidytext)
-
-# load required functions from functions directory
-source(here::here("functions", "clean_string.R"))
-source(here::here("functions", "xml_rule_text.R"))
-source(here::here("functions", "tengram.R"))
 
 
 # function to fill NAs
@@ -153,14 +140,4 @@ namingthings <- function(x){
   return(x)
 }
 
-
-# from diss setup file
-
-# Table formatting
-library(kableExtra)
-kablebox <- . %>%
-  slice_head(n = 100) %>%
-  knitr::kable() %>%
-  kable_styling() %>%
-  scroll_box(height = "400px")
 

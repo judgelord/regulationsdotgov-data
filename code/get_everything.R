@@ -16,8 +16,18 @@
 # - this will require improving the functions to include a "ge" (greater than or equal to) argument for foming API calls
 # - currently the funtions are hard-coded to be less than or equal to ("le") the date provided
 
+# If updating package
+if(F){
+  install.packages("regulationsdotgov")
+  remove.packages("regulationsdotgov")
+  library(regulationsdotgov) # confirm uninstall
+}
 
-# devtools::install_github("https://github.com/judgelord/regulationsdotgov")
+if(!"regulationsdotgov" %in% installed.packages() ){
+  devtools::install_github("https://github.com/judgelord/regulationsdotgov", force = T)
+  install.packages("regulationsdotgov")
+}
+
 library(regulationsdotgov)
 
 # other packages
@@ -39,13 +49,14 @@ dockets <- tibble(
   docket = str_remove(dockets, ".*/")
 )
 
+# drop paths to agencies or documents rather than documents
 dockets <- dockets |>
   filter(str_detect(docket, "-"),
          !str_detect(agency, "-"))
 
 # PICK AN ORDER
-dockets %<>% arrange(rev(agency))
-dockets %<>% arrange(agency)
+dockets %<>% arrange(rev(docket))
+dockets %<>% arrange(docket)
 
 
 
@@ -92,6 +103,7 @@ save_dockets <- function(agency){
 }
 
 # COLLECT DOCKET METADATA WE DON'T HAVE FOR AGENCIES
+#FIXME attempted to edit so it binds with new dockets, not working flawlessly
 for (agency in agencies){
 
   file <- here::here("data", "metadata",
@@ -106,8 +118,26 @@ for (agency in agencies){
     }, error = function(e) {
       message("Unable to collect", agency,"_dockets.rda.")
     })
-  } else{message(agency, "_dockets.rda file already exists.")}
-}
+  } else {
+    tryCatch({
+    load(file)
+
+    fresh_dockets <- get_dockets(agency = agency, api_keys = keys)
+
+    new_dockets <- dplyr::anti_join(fresh_dockets, dockets, by = "id")
+
+    if (any(new_dockets)) {
+      dockets <- rbind(dockets, new_dockets)
+      save(dockets, file = file)
+      message("Updated ", agency, "_dockets.rda with new dockets.")
+    } else {
+      message("No new dockets found for ", agency, ".")
+    }},error = function(e) {
+      message("An error occured", e$message)
+    })
+  }
+  }
+
 
 # all agency folders
 # agency <- list.dirs("data", "metadata",  recursive = F) |> str_remove("data/")
@@ -318,7 +348,7 @@ docs <- docs |>  filter(str_detect(docket, "/")) |>
 
 save_comments <- function(docket){
 
-  message(docket)
+  message(docket, appendLF = F)
 
   # for testing
   # docket <- dockets$docket[1]
@@ -334,7 +364,7 @@ save_comments <- function(docket){
     documents %<>% distinct()
 
     # FIXME -- TEMPORARY uniquing comment files saved with rbind
-    # save(documents, file = doc_file)
+    #save(documents, file = doc_file)
 
   } else {
     message("getting documents")
@@ -353,18 +383,17 @@ save_comments <- function(docket){
     #FIXME not sure if a 0 comment document was the source of the error I got
     drop_na(commentStartDate)
 
+  message("---", nrow(d), " document(s) open for comment")
 
   # HELPER FUNCTION
   save_commentsOnId <- function(objectId, document){
-
-    message(document)
 
     doc_dir <- here::here("data", "metadata",
                           str_extract(docket, "[A-Z]+"), # agency
                           docket,
                           document)
 
-    dir.create(doc_dir)
+    if(!dir.exists(doc_dir)){dir.create(doc_dir)}
 
     comments_on_document_file =  here::here("data", "metadata",
                                             str_extract(docket, "[A-Z]+"), # agency
@@ -375,11 +404,12 @@ save_comments <- function(docket){
     ## DETAILS
     det_file <- str_replace(comments_on_document_file, "comments.rda", "comment_details.rda")
 
+    if(!file.exists( det_file )){
 
     ## If we need comment metadata
     if( !file.exists(comments_on_document_file) ){
 
-      message("getting comments")
+      message("----getting comments on ", document, appendLF = F)
 
       comments <- get_commentsOnId(objectId, api_keys = keys)
 
@@ -387,6 +417,8 @@ save_comments <- function(docket){
            file = comments_on_document_file)
 
     } else {
+      message("----loading comments on ", document, appendLF = F)
+
       load(comments_on_document_file)
 
       comments %<>% distinct()
@@ -395,16 +427,16 @@ save_comments <- function(docket){
       #save(comments, file = comments_on_document_file)
     }
 
+      message("-----", nrow(comments), " comments")
 
-
-    if(  nrow(comments) > 10000 ){
-      save(det_file, file = det_file |> str_replace("details", "MoreThan10k"))
+    if(  nrow(comments) > 100000 ){
+      save(det_file, file = det_file |> str_replace("details", "MoreThan100k"))
     }
 
     # GET DETAILS
-    if( !file.exists(det_file) & nrow(comments) <= 10000 & "id" %in% colnames(comments)){
+    if( !file.exists(det_file) & nrow(comments) <= 100000 & "id" %in% colnames(comments)){
 
-      message("getting comment details")
+      message("-----getting comment details")
 
       comment_details <- get_comment_details(comments$id, api_keys = keys) |>
         distinct()
@@ -412,21 +444,33 @@ save_comments <- function(docket){
       save(comment_details, file = det_file)
     }
 
+    } else { message("----comment_details.rda exists")}
   }
 
   # save comments on specific documents
-  walk2(d$commentOnId, d$id,
-        possibly(save_commentsOnId, otherwise = message("FAIL"))) #FIXME WE NEED A BETTER MESSAGE
+  walk2(d$commentOnId, d$id, save_commentsOnId)
+        # possibly(save_commentsOnId,
+        #          otherwise = message("FAIL") #FIXME WE NEED A BETTER MESSAGE; why is it trying docket ids as if they were document ids?
+        #          )
+        # )
 
 }
 
-walk(head(dockets$docket, 4), possibly(save_comments, otherwise = print("nope")))
 
+# test
+walk(head(dockets$docket, 4), save_comments)
+
+# apply to all
 walk(dockets$docket, possibly(save_comments, otherwise = print("nope")))
 
 
 
+##  These dockets do not return public submissions from bulk data download:
 
+# docket <- "FDA-2015-N-0030" # DONE VIA API
+# docket <- "AMS-NOP-21-0073" # DONE VIA BULK (IT DID WORK AFTER ALL)
+
+save_comments(docket)
 
 
 
