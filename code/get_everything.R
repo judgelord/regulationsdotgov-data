@@ -63,19 +63,21 @@ dockets %<>% arrange(docket)
 agencies <- dockets$agency
 
 
-## FIXME Commenting this out for now becasue these no longer seem to be problems
-# problem_documents <- tribble(
-#   ~docket, ~document, ~objectId,
+## FIXME Commenting this out for now because these no longer seem to be problems
+problem_documents <- tribble(
+  ~docket, ~document, ~objectId,
+  "APHIS-2022-0003", "APHIS-2022-0003-0001", "0900006484e23ccb"
+
 #   "WHD-2017-0002", "WHD-2017-0002-0001",  "0900006482969fbd", # expected 140-214k
 #   "WHD-2017-0003", "WHD-2017-0003-0001", "0900006482cdbe54", # expected 218-376k https://www.regulations.gov/docket/WHD-2017-0003
 #   "WHD-2019-0001","WHD-2019-0001-0001", "0900006483b173dc",
 #   "PHMSA-2021-0039", "PHMSA-2021-0039-2101", "0900006485c21b4f",
 #   "PHMSA-2021-0058", "PHMSA-2021-0058-0002", "0900006484e3545a",
 #   "NHTSA-2022-0079", "NHTSA-2022-0079-0015", "090000648637d7c0" # expecting 18,317 - https://www.regulations.gov/document/NHTSA-2022-0079-0015
-#   )
+  )
 #
-# dockets %<>%
-#   filter(!docket %in% problem_documents$docket)
+dockets %<>%
+  filter(!docket %in% problem_documents$docket)
 
 
 
@@ -336,28 +338,28 @@ docs <- docs |>  filter(str_detect(docket, "/")) |>
 
 
 
-
-################
-# COMMENTS #
+#######################################################
+         #####################################
+         # DOCUMENTS AND COMMENTS ON DOCKETS #
+         #####################################
 #######################################################
 #### Get metadata for comments on a document or docket
 # (Along the way, get any missing documents)
-
-# get_comments_on_docket("[docket_id]") # retrieves all comments for a docket (e.g., including an Advanced Notice of Proposed Rulemaking and all draft proposed rules)
-
-
 save_comments <- function(docket){
 
   message(docket, appendLF = F)
 
   # for testing
   # docket <- dockets$docket[1]
+
+  # file path for document metadata
   doc_file <- here::here("data", "metadata",
                          str_extract(docket, "[A-Z]+"), # agency
                          docket,
                          paste(docket, "documents.rda", sep = "_"))
 
-  if( file.exists(doc_file) ){
+
+  if( file.exists(doc_file) ){ # if the document metadata exists, load it
 
     load(doc_file) #FIXME  update this with new docs since most recent document date
 
@@ -366,7 +368,7 @@ save_comments <- function(docket){
     # FIXME -- TEMPORARY uniquing comment files saved with rbind
     #save(documents, file = doc_file)
 
-  } else {
+  } else { # if document metadata does not exist, get it
     message("getting documents")
     documents <- get_documents(docket, api_keys = keys) |>
       distinct()
@@ -374,9 +376,10 @@ save_comments <- function(docket){
     save(documents, file = doc_file)
   }
 
-  # subset to proposed rules and notices that took comments
+  # subset to documents that were open for comment comments
   d <- documents |>
-    filter(documentType %in% c("Proposed Rule", "Notice")) |>
+    #filter(documentType %in% c("Proposed Rule", "Notice")) |> # FIXME, consider comments on other docs for next pass
+    # rename vars to avoid conflicts with comment data and be clear about what is a document id vs a comment id
     rename(document_subtype = subtype,
            commentOnId = objectId,
            document_title = title) |>
@@ -385,9 +388,10 @@ save_comments <- function(docket){
 
   message("---", nrow(d), " document(s) open for comment")
 
-  # HELPER FUNCTION
+  # HELPER FUNCTION TO GET AND SAVE COMMENTS AND COMMENT DETAILS
   save_commentsOnId <- function(objectId, document){
 
+    # each document gets a folder in the docket folder
     doc_dir <- here::here("data", "metadata",
                           str_extract(docket, "[A-Z]+"), # agency
                           docket,
@@ -395,45 +399,59 @@ save_comments <- function(docket){
 
     if(!dir.exists(doc_dir)){dir.create(doc_dir)}
 
+    # in document older, the file path for comments metadata
     comments_on_document_file =  here::here("data", "metadata",
                                             str_extract(docket, "[A-Z]+"), # agency
                                             docket,
                                             document,
                                             paste(document, "comments.rda", sep = "_"))
 
-    ## DETAILS
+    ## the file path for comment_details metadata
     det_file <- str_replace(comments_on_document_file, "comments.rda", "comment_details.rda")
 
+    ## if we don't already have comment_details metadata, get it
     if(!file.exists( det_file )){
 
-    ## If we need comment metadata
+    ## If we also need comment metadata, first get it
     if( !file.exists(comments_on_document_file) ){
 
-      message("----getting comments on ", document, appendLF = F)
+      message("---Getting comments on ", document, appendLF = F)
 
       comments <- get_commentsOnId(objectId, api_keys = keys)
 
       save(comments,
            file = comments_on_document_file)
 
-    } else {
-      message("----loading comments on ", document, appendLF = F)
+    } else { # if comment metadata file already exists, load it
+      message("---Loading comments on ", document, appendLF = F)
 
       load(comments_on_document_file)
 
       comments %<>% distinct()
 
+      # # if the saved file contains no comments, try again, just to make sure that no comments were received
+      # # FIXME This takes a long time and seems to not get anything new, so we should typically skip this chunk
+      # if( !"id" %in% colnames(comments)){
+      #   message(" | No comments in comments.rda | Trying again", appendLF = F)
+      #
+      #   comments <- get_commentsOnId(objectId, api_keys = keys)
+      #
+      #   save(comments,
+      #        file = comments_on_document_file)
+      # }
+
       # FIXME -- TEMPORARY uniquing comment files saved with rbind
       #save(comments, file = comments_on_document_file)
     }
 
-      message("-----", nrow(comments), " comments")
+      message("-----", nrow(comments) - 1, " comments")
 
+      # if there are more than 100k comments, skip it (we will get these from bulk data)
     if(  nrow(comments) > 100000 ){
       save(det_file, file = det_file |> str_replace("details", "MoreThan100k"))
     }
 
-    # GET DETAILS
+    # otherwise, GET COMMENT_DETAILS
     if( !file.exists(det_file) & nrow(comments) <= 100000 & "id" %in% colnames(comments)){
 
       message("-----getting comment details")
@@ -444,15 +462,36 @@ save_comments <- function(docket){
       save(comment_details, file = det_file)
     }
 
-    } else { message("----comment_details.rda exists")}
+    } else { # if det_file exists
+      message("----comment_details.rda exists, loading ", appendLF = F)
+
+      # load comments metadata
+      load(comments_on_document_file)
+
+      # load comment details
+      load(det_file)
+
+      # subset comment metadata to comments missing from comment_details
+      comments_missing <- filter(comments, !id %in% comment_details$id)
+
+      message(nrow(comments_missing), " missing")
+
+      if(nrow(comments_missing)>0){
+      # get missing comment details
+      comment_details2 <- get_comment_details(comments_missing$id, api_keys = keys) |>
+        distinct()
+
+      # combine old details and new details and save
+      comment_details <- full_join(comment_details, comment_details2)
+
+      save(comment_details, file = det_file)
+      }
+
+      }
   }
 
   # save comments on specific documents
   walk2(d$commentOnId, d$id, save_commentsOnId)
-        # possibly(save_commentsOnId,
-        #          otherwise = message("FAIL") #FIXME WE NEED A BETTER MESSAGE; why is it trying docket ids as if they were document ids?
-        #          )
-        # )
 
 }
 
