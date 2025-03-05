@@ -63,11 +63,11 @@ dockets %<>% arrange(docket)
 agencies <- dockets$agency
 
 
-## FIXME Commenting this out for now because these no longer seem to be problems
 problem_documents <- tribble(
   ~docket, ~document, ~objectId,
-  "APHIS-2022-0003", "APHIS-2022-0003-0001", "0900006484e23ccb"
-
+  "APHIS-2022-0003", "APHIS-2022-0003-0001", "0900006484e23ccb",
+  "HHS-OS-2011-0023", "HHS-OS-2011-0023-0002", "0900006480ed4b59"
+  ## FIXME Commenting out for now because these no longer seem to be problems
 #   "WHD-2017-0002", "WHD-2017-0002-0001",  "0900006482969fbd", # expected 140-214k
 #   "WHD-2017-0003", "WHD-2017-0003-0001", "0900006482cdbe54", # expected 218-376k https://www.regulations.gov/docket/WHD-2017-0003
 #   "WHD-2019-0001","WHD-2019-0001-0001", "0900006483b173dc",
@@ -386,7 +386,7 @@ save_comments <- function(docket){
     #FIXME not sure if a 0 comment document was the source of the error I got
     drop_na(commentStartDate)
 
-  message("---", nrow(d), " document(s) open for comment")
+  message(" | ", nrow(d), " document(s) open for comment | ")
 
   # HELPER FUNCTION TO GET AND SAVE COMMENTS AND COMMENT DETAILS
   save_commentsOnId <- function(objectId, document){
@@ -415,7 +415,7 @@ save_comments <- function(docket){
     ## If we also need comment metadata, first get it
     if( !file.exists(comments_on_document_file) ){
 
-      message("---Getting comments on ", document, appendLF = F)
+      message("|  Getting comments on ", document, " | ", appendLF = F)
 
       comments <- get_commentsOnId(objectId, api_keys = keys)
 
@@ -423,7 +423,7 @@ save_comments <- function(docket){
            file = comments_on_document_file)
 
     } else { # if comment metadata file already exists, load it
-      message("---Loading comments on ", document, appendLF = F)
+      message("|  Loading comments on ", document, " | ", appendLF = F)
 
       load(comments_on_document_file)
 
@@ -444,7 +444,7 @@ save_comments <- function(docket){
       #save(comments, file = comments_on_document_file)
     }
 
-      message("-----", nrow(comments) - 1, " comments")
+      message(" | ", nrow(comments) - 1, " comments |")
 
       # if there are more than 100k comments, skip it (we will get these from bulk data)
     if(  nrow(comments) > 100000 ){
@@ -454,7 +454,7 @@ save_comments <- function(docket){
     # otherwise, GET COMMENT_DETAILS
     if( !file.exists(det_file) & nrow(comments) <= 100000 & "id" %in% colnames(comments)){
 
-      message("-----getting comment details")
+      message("|   Getting comment details")
 
       comment_details <- get_comment_details(comments$id, api_keys = keys) |>
         distinct()
@@ -463,7 +463,7 @@ save_comments <- function(docket){
     }
 
     } else { # if det_file exists
-      message("----comment_details.rda exists, loading ", appendLF = F)
+      message("|    Comment_details.rda exists, loading | ", appendLF = F)
 
       # load comments metadata
       load(comments_on_document_file)
@@ -474,9 +474,9 @@ save_comments <- function(docket){
       # subset comment metadata to comments missing from comment_details
       comments_missing <- filter(comments, !id %in% comment_details$id)
 
-      message(nrow(comments_missing), " missing")
+      message(nrow(comments_missing), " of ", nrow(comments), " missing |")
 
-      if(nrow(comments_missing)>0){
+      if(nrow(comments_missing)>0 & nrow(comments_missing)<10000 & "id" %in% colnames(comments) ){ #FIXME change to 100k when bulk data is formatted correctly such that id is id
       # get missing comment details
       comment_details2 <- get_comment_details(comments_missing$id, api_keys = keys) |>
         distinct()

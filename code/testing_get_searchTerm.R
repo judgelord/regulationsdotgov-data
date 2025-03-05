@@ -9,89 +9,16 @@ source("setup.R")
   searchTerm = "climate change"
 
   # banned words
-  searchTerm = c(
-    # https://www.nytimes.com/2025/02/11/us/politics/trump-wordplay.html?smid=nytcore-ios-share&referringSource=articleShare
-    "gender ideology",
-    "undocumented",
-    "alien",
-    "Equity",
-    "Gender",
-    "Transgender",
-    "Nonbinary",
-    "Pregnant people",
-    "Assigned male at birth",
-    "Antiracist",
-    "Trauma",
-    "Hate speech",
-    "Intersectional",
-    "Multicultural",
-    "Oppression",
-    "D.E.I.",
-    #https://www.washingtonpost.com/science/2025/02/04/national-science-foundation-trump-executive-orders-words/
-    "gender",
-                 "gender identity",
-                 "transgender",
-                 "pregnant person",
-                 "pregnant people",
-                 "LGBT",
-                 "transsexual",
-                 "nonbinary",
-                 "assigned male at birth",
-                 "biologically male",
-                 "biologically female",
-                 "he/she/they/them",
-                 "diversity",
-                 "equity",
-                 "inclusion",
-                 "accessibility",
-                 "Women",
-                 "Diverse",
-                 "Institutional",
-                 "Historically",
-                 # NOAA - https://www.nytimes.com/2025/02/10/climate/noaa-trump-executive-orders.html
-                 "climate science",
-                 "climate crisis",
-                 "clean energy",
-                 "pollution",
-                 "environmental quality"
-                 )
+  library(googlesheets4)
+  searchTerm = read_sheet("1LLKWDHiwnVEpvlqurI1t7NNHmdrk2liXPd-FZkNrvW0") |>
+    drop_na(term) |>
+    filter(!str_detect(term, "/")) |>
+    pull(term) |>
+    unique()
 
-  searchTerm = c(
-    "Critical Race Theory",
-  "DACA",
-  "Diversity, equity",
-  "Illegal Alien",
-  "MENA",
-  "Mexican Cartel" ,
-  "Muslim",
-  "Racism",
-  "Racist",
-  "Slavery",
-  "Unaccompanied Alien Childen",
-  "White Privilege",
-  "Affirmative Action",
-  "African American",
-  "Black american",
-  "Black woman",
-  "Black men",
-  "Arab American",
-  "Border Crisis",
-  "Drug Cartel" ,
-  "Ethnicity",
-  "Hispanic",
-  "Meritocracy",
-  "Native American",
-  "Secure the border",
-  "Secure Border",
-  "Terrorist",
-  "Undocumented",
-  "Asian American",
-  "Citizenship",
-  "Civil Rights",
-  "Colorblindness",
-  "Gang",
-  "Immigrant",
-  "Immigration")
+
+
+  searchTerm <- searchTerm[!searchTerm %in% c("gender identity", "accessibility", "Women", "clean energy")]
 
   documents = c("documents", "comments")
   # documents = "comments"
@@ -116,7 +43,7 @@ source("setup.R")
 
       message(min(d$postedDate))
 
-      comments <- d
+      comments <- d |> distinct()
 
       save(comments, file = file)
     }
