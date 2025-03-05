@@ -2,7 +2,9 @@
 source("setup.R")
 
 # the comments we already have metadata for
-doc_list <- list.files(path = here::here("data", "metadata"), pattern = "_comment_details.rda", recursive = T, include.dirs = T)
+doc_list <- list.files(path = here::here("data", "metadata"),
+                       pattern = "_comment_details.rda", recursive = T,
+                       include.dirs = T)
 
 # a data frame of parts of the document path
 docs <- tibble(
@@ -16,32 +18,45 @@ docs <- tibble(
   # drop aggregated details
   filter(docket != document)
 
-head(docs) #|> transmute(docket == document)
+# inspect
+head(docs)
 
-dir.create(here::here("data", "files", docs$agency[1]))
+##########################
+# 1. CREATE DIRECTORIES  #
+##########################
 
+# make sure there is a directory for each agency
 for(i in docs$agency |> unique() ) {
   dir.create(here::here("data", "files", i))
 }
 
+# a function to make folders for each docket
 create_docket_folder <- function(agency, docket){
   dir.create(here::here("data", "files", agency, docket))
 }
 
+# map that function over dockets
 walk2(docs$agency, docs$docket, create_docket_folder)
 
+# a function to make folders for each document
 create_doc_folder <- function(agency, docket, document){
   dir.create(here::here("data", "files", agency, docket, document))
 }
 
+# map that function over documents
 pwalk(list(docs$agency, docs$docket, docs$document), .f = create_doc_folder)
 ############# END CREATE DIRECTORIES ###################
 
-# for testing
-agency <- docs$agency[8]
-docket <- docs$docket[8]
-document <- docs$document[8]
-metadata_path <- docs$metadata_path[8]
+#####################
+# 2. Download files #
+#####################
+
+# a document for testing
+test <- 8
+agency <- docs$agency[test]
+docket <- docs$docket[test]
+document <- docs$document[test]
+metadata_path <- docs$metadata_path[test]
 
 # HELPERS
 # file hierarchy to determine which files are downloaded
@@ -57,10 +72,10 @@ file_hierarchy <- tibble(
 )
 
 ### MAIN FUNCTION
-# FIXME this does not yet prioritize document types or filter out large files -- it downloads all attachments
 download_attachments <- function(agency, docket, document, metadata_path){
   load(metadata_path)
 
+  # make data frame of attachments from list
   attachments <- comment_details$attachments |>
     # replace NULL with NA (WHY DO WE HAVE NULLS IN THESE DATA? -- A Q FOR THE PACKAGE )
     map( ~ifelse(is.null(.x), NA, .x)) |>
@@ -69,6 +84,7 @@ download_attachments <- function(agency, docket, document, metadata_path){
     bind_rows() |>
     unnest(cols = c(fileUrl, format, size))
 
+  # Warn about file formats not in format hierarchy
   file_types <- unique(attachments$format)
   new_file_types <- file_types[which(!file_types %in% file_hierarchy$format)]
 
@@ -94,7 +110,7 @@ download_attachments <- function(agency, docket, document, metadata_path){
     slice_max(order_by = priority, n = 1)
 
 
-  # For each file url, download to path
+  # For each file URL i, download to path i, if the file does not yet exist
   for(i in 1:length(to_download$fileUrl) ){
 
     if(!file.exists(to_download$path[i])){
@@ -113,16 +129,20 @@ download_attachments <- function(agency, docket, document, metadata_path){
   }
 
   }
+## END MAIN FUNCTION
 
+# Index of documents from the docs data to download comments on
 start = 0
 stop = 700
+
 # make a list to map over
 metadata_list <- list(agency = docs$agency[start:stop],
                       docket = docs$docket[start:stop],
                       document = docs$document[start:stop],
                       metadata_path = docs$metadata_path[start:stop])
 
-# WARNING THIS DOWNLOADS ALL FILES
+## map over metadata list, downloading attachments
+# WARNING THIS STARTS DOWNLOAD, WHICH IS DIFFICULT TO STOP
 pwalk(metadata_list, possibly(download_attachments, otherwise = "Fail"))
 
 # show file types missing from hierarchy
