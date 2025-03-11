@@ -1,13 +1,23 @@
 # load commonly used packages
 source("setup.R")
 
+metadata_root <- here::here("data", "metadata")
+
+files_root <- here::here("data", "files")
+
+if(F){
+metadata_root %<>% str_replace("/Volumes/Devin's 5TB/",  "/Users/judgelor/University of Michigan Dropbox/Devin Judge-Lord/")
+}
+
+dir.create(files_root)
+
 # the comments we already have metadata for
 doc_list <- list.files(path = here::here("data", "metadata"), pattern = "_comment_details.rda", recursive = T, include.dirs = T)
 
 # a data frame of parts of the document path
 docs <- tibble(
-  metadata_path = paste0("data/metadata/", doc_list),
-  file_dir = paste0("data/files/", doc_list) |>  str_extract(".*/") |> str_remove("/$"),
+  metadata_path = paste(metadata_root, doc_list, sep = "/"),
+  file_dir = here::here(files_root, doc_list) |>  str_extract(".*/") |> str_remove("/$"),
   agency = str_remove(doc_list, "/.*"),
   docket = str_remove(doc_list, ".*?/") |> str_remove("/.*"),
   document = str_remove(doc_list, ".*/") |> str_remove("_.*"),
@@ -18,20 +28,20 @@ docs <- tibble(
 
 head(docs) #|> transmute(docket == document)
 
-dir.create(here::here("data", "files", docs$agency[1]))
+dir.create(here::here(files_root, docs$agency[1]))
 
 for(i in docs$agency |> unique() ) {
-  dir.create(here::here("data", "files", i))
+  dir.create(here::here(files_root, i))
 }
 
 create_docket_folder <- function(agency, docket){
-  dir.create(here::here("data", "files", agency, docket))
+  dir.create(here::here(files_root, agency, docket))
 }
 
 walk2(docs$agency, docs$docket, create_docket_folder)
 
 create_doc_folder <- function(agency, docket, document){
-  dir.create(here::here("data", "files", agency, docket, document))
+  dir.create(here::here(files_root, agency, docket, document))
 }
 
 pwalk(list(docs$agency, docs$docket, docs$document), .f = create_doc_folder)
@@ -85,7 +95,7 @@ download_attachments <- function(agency, docket, document, metadata_path){
     mutate(number = fileUrl |> str_extract("_[0-9]*") |> str_remove("_"),
            id = fileUrl |> str_remove(".*gov/") |> str_remove("/attachment.*"),
            # make path
-           path = here::here("data", "files", agency, docket, document,
+           path = here::here(files_root, agency, docket, document,
                              paste0(id, "_", number, ".", format))) |>
     group_by(id, number) |>
     left_join(file_hierarchy, by = "format")  |>
