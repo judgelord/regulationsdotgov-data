@@ -37,6 +37,8 @@ dir.create(here::here(files_root, docs$agency[1]))
 # 1. CREATE DIRECTORIES  #
 ##########################
 
+dir.create(here::here(files_root, docs$agency[1]))
+
 # make sure there is a directory for each agency
 for(i in docs$agency |> unique() ) {
   dir.create(here::here(files_root, i))
