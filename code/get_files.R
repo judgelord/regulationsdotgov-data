@@ -6,13 +6,14 @@ metadata_root <- here::here("data", "metadata")
 files_root <- here::here("data", "files")
 
 if(F){
-metadata_root %<>% str_replace("/Volumes/Devin's 5TB/",  "/Users/judgelor/University of Michigan Dropbox/Devin Judge-Lord/")
+metadata_root %<>% str_replace("/Volumes/Devin's 5TB/",  
+                               "/Users/judgelor/University of Michigan Dropbox/Devin Judge-Lord/")
 }
 
 dir.create(files_root)
 
 # the comments we already have metadata for
-doc_list <- list.files(path = here::here("data", "metadata"),
+doc_list <- list.files(path = metadata_root,
                        pattern = "_comment_details.rda", recursive = T,
                        include.dirs = T)
 
@@ -30,8 +31,6 @@ docs <- tibble(
 
 # inspect
 head(docs)
-
-dir.create(here::here(files_root, docs$agency[1]))
 
 ##########################
 # 1. CREATE DIRECTORIES  #
@@ -147,7 +146,7 @@ download_attachments <- function(agency, docket, document, metadata_path){
 
 # Index of documents from the docs data to download comments on
 start = 0
-stop = 700
+stop = 7
 
 # make a list to map over
 metadata_list <- list(agency = docs$agency[start:stop],
@@ -163,7 +162,7 @@ pwalk(metadata_list, possibly(download_attachments, otherwise = "Fail"))
 warnings()
 
 # FOR INSPECTING
-load(metadata_list$metadata_path[51])
+load(metadata_list$metadata_path[1])
 
 # FAILS
 #33 - bulk docket needs converting
