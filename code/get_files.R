@@ -79,12 +79,14 @@ metadata_path <- docs$metadata_path[test]
 # file hierarchy to determine which files are downloaded
 file_hierarchy <- tibble(
   format = c("rtf", "htm", "txt", # plain text 
-             "doc", "docx", "ppt", "pptx", "xlsx", "xls", # pandoc-able 
+             "doc", "docx", "ppt", "pptx", # pandoc-able 
+             "xlsx", "xls", "xlsm", # spreadsheets 
              "wpd", # file extension can be changed to pandoc-able (I hope) - https://mendelson.org/wpdos/wpfilesinosx.html
              "pdf",
              "jpg", "jpeg", "bmp", "tif", "png", "gif"),
   priority = c(5, 5, 5,
-               4, 4, 4, 4, 4, 4,
+               4, 4, 4, 4, 
+               4, 4, 4,
                3,
                2,
                1, 1, 1, 1, 1,1)
@@ -156,6 +158,7 @@ stop = 1000
 
 start = stop
 stop = start + 1000 
+stop = nrow(docs)
 
 # make a list to map over
 metadata_list <- list(agency = docs$agency[start:stop],
