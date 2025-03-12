@@ -17,7 +17,7 @@ doc_list <- list.files(path = metadata_root,
                        pattern = "_comment_details.rda", recursive = T,
                        include.dirs = T)
 
-# a data frame of parts of the document path
+# a data frame of parts of the document directory path
 docs <- tibble(
   metadata_path = paste(metadata_root, doc_list, sep = "/"),
   file_dir = here::here(files_root, doc_list) |>  str_extract(".*/") |> str_remove("/$"),
@@ -39,7 +39,9 @@ head(docs)
 dir.create(here::here(files_root, docs$agency[1]))
 
 # make sure there is a directory for each agency
-for(i in docs$agency |> unique() ) {
+agencies <- docs$agency |> unique() 
+
+for(i in agencies) {
   dir.create(here::here(files_root, i))
 }
 
@@ -48,8 +50,10 @@ create_docket_folder <- function(agency, docket){
   dir.create(here::here(files_root, agency, docket))
 }
 
+dockets <- distinct(docs, agency, docket)
+
 # map that function over dockets
-walk2(docs$agency, docs$docket, create_docket_folder)
+walk2(dockets$agency, dockets$docket, create_docket_folder)
 
 # a function to make folders for each document
 create_doc_folder <- function(agency, docket, document){
@@ -113,8 +117,8 @@ download_attachments <- function(agency, docket, document, metadata_path){
     # make id and number
     mutate(number = fileUrl |> str_extract("_[0-9]*") |> str_remove("_"),
            id = fileUrl |> str_remove(".*gov/") |> str_remove("/attachment.*"),
-           # make path
-           path = here::here(files_root, agency, docket, document,
+           # make file_path
+           file_path = here::here(files_root, agency, docket, document,
                              paste0(id, "_", number, ".", format))) |>
     group_by(id, number) |>
     left_join(file_hierarchy, by = "format")  |>
@@ -123,14 +127,14 @@ download_attachments <- function(agency, docket, document, metadata_path){
     slice_max(order_by = priority, n = 1)
 
 
-  # For each file URL i, download to path i, if the file does not yet exist
+  # For each file URL i, download to file_path i, if the file does not yet exist
   for(i in 1:length(to_download$fileUrl) ){
 
-    if(!file.exists(to_download$path[i])){
+    if(!file.exists(to_download$file_path[i])){
       tryCatch({
 
     download.file(to_download$fileUrl[i],
-                  destfile = to_download$path[i])
+                  destfile = to_download$file_path[i])
 
       }, error = function(e) {
         message(e)
@@ -146,7 +150,7 @@ download_attachments <- function(agency, docket, document, metadata_path){
 
 # Index of documents from the docs data to download comments on
 start = 0
-stop = 7
+stop = 800
 
 # make a list to map over
 metadata_list <- list(agency = docs$agency[start:stop],
