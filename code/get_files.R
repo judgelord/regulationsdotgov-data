@@ -6,7 +6,7 @@ metadata_root <- here::here("data", "metadata")
 files_root <- here::here("data", "files")
 
 if(F){
-metadata_root %<>% str_replace("/Volumes/Devin's 5TB/",  
+metadata_root %<>% str_replace("/Volumes/Devin's 5TB/",
                                "/Users/judgelor/University of Michigan Dropbox/Devin Judge-Lord/")
 }
 
@@ -39,7 +39,7 @@ head(docs)
 dir.create(here::here(files_root, docs$agency[1]))
 
 # make sure there is a directory for each agency
-agencies <- docs$agency |> unique() 
+agencies <- docs$agency |> unique()
 
 for(i in agencies) {
   dir.create(here::here(files_root, i))
@@ -64,6 +64,11 @@ create_doc_folder <- function(agency, docket, document){
 pwalk(list(docs$agency, docs$docket, docs$document), .f = create_doc_folder)
 ############# END CREATE DIRECTORIES ###################
 
+
+
+
+
+
 #####################
 # 2. Download files #
 #####################
@@ -78,14 +83,14 @@ metadata_path <- docs$metadata_path[test]
 # HELPERS
 # file hierarchy to determine which files are downloaded
 file_hierarchy <- tibble(
-  format = c("rtf", "htm", "txt", # plain text 
-             "doc", "docx", "ppt", "pptx", # pandoc-able 
-             "xlsx", "xls", "xlsm", # spreadsheets 
+  format = c("rtf", "htm", "txt", # plain text
+             "doc", "docx", "ppt", "pptx", # pandoc-able
+             "xlsx", "xls", "xlsm", # spreadsheets to csvs
              "wpd", # file extension can be changed to pandoc-able (I hope) - https://mendelson.org/wpdos/wpfilesinosx.html
-             "pdf",
+             "pdf", # previously used poppler (sp) - i don't know if that is best , next step OCR
              "jpg", "jpeg", "bmp", "tif", "png", "gif"),
   priority = c(5, 5, 5,
-               4, 4, 4, 4, 
+               4, 4, 4, 4,
                4, 4, 4,
                3,
                2,
@@ -157,7 +162,7 @@ start = 0
 stop = 1000
 
 start = stop
-stop = start + 1000 
+stop = start + 1000
 stop = nrow(docs)
 
 # make a list to map over

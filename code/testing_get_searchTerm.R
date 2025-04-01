@@ -1,12 +1,11 @@
 
+
 source("setup.R")
+# keys saved up one directory from this project folder
+load("../keys.rda")
 
+library(regulationsdotgov)
 
-
-  searchTerm =  c("national congress of american indians", "cherokee nation", "climate justice", "environmental justice")
-  searchTerm = c("racial", "latino")
-  searchTerm = c("racial")
-  searchTerm = "climate change"
 
   # banned words
   library(googlesheets4)
@@ -18,7 +17,8 @@ source("setup.R")
 
 
 
-  searchTerm <- searchTerm[!searchTerm %in% c("gender identity", "accessibility", "Women", "clean energy")]
+  searchTerm <- searchTerm[!searchTerm %in% c("gender identity", "accessable", "accessibility", "Women", "clean energy",
+                                              "environmental quality", "community")]
 
   documents = c("documents", "comments")
   # documents = "comments"

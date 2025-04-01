@@ -1,5 +1,5 @@
 ## Script for checking data completeness
-
+library(tidyverse)
 
 # Pull metadata and update our record of docket counts
 
@@ -33,7 +33,7 @@ pull_metadata <- function(api_keys){
 }
 
 # Running the function will create a new column for today's date with a docCount
-#pull_metadata(api_keys = keys)
+pull_metadata(api_keys = keys)
 
 
 load(here::here("data", "metadata","metadata_record.rda"))
@@ -50,7 +50,7 @@ for (i in seq_along(metadata_record$agencies)) {
 
   tryCatch({
     dockets <- list.dirs(paste0("data/metadata/", agency), recursive = FALSE)
-    ndockets <- length(dockets) - 1
+    ndockets <- length(dockets)
     complete <- abs(ndockets - docCount) <= 100
   }, error = function(e) {
     message("No directory found for:", agency)

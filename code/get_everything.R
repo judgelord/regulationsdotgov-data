@@ -14,7 +14,7 @@
 # - currently, it just checks if a file exists and gets the data from the API if it does not
 #FIXME alternatively, specify a date of last run and merge in with existing metadata file
 # - this will require improving the functions to include a "ge" (greater than or equal to) argument for foming API calls
-# - currently the funtions are hard-coded to be less than or equal to ("le") the date provided
+# - currently the functions are hard-coded to be less than or equal to ("le") the date provided
 
 # If updating package
 if(F){
@@ -105,7 +105,6 @@ save_dockets <- function(agency){
 }
 
 # COLLECT DOCKET METADATA WE DON'T HAVE FOR AGENCIES
-#FIXME attempted to edit so it binds with new dockets, not working flawlessly
 for (agency in agencies){
 
   file <- here::here("data", "metadata",
@@ -128,7 +127,7 @@ for (agency in agencies){
 
     new_dockets <- dplyr::anti_join(fresh_dockets, dockets, by = "id")
 
-    if (any(new_dockets)) {
+    if (nrow(new_dockets) > 0) {
       dockets <- rbind(dockets, new_dockets)
       save(dockets, file = file)
       message("Updated ", agency, "_dockets.rda with new dockets.")
@@ -145,6 +144,7 @@ for (agency in agencies){
 # agency <- list.dirs("data", "metadata",  recursive = F) |> str_remove("data/")
 
 # create directories for each docket
+#FIXME warnings + error message need to be worked on
 for (agency in agencies) {
   message(agency)
 
@@ -345,6 +345,9 @@ docs <- docs |>  filter(str_detect(docket, "/")) |>
 #######################################################
 #### Get metadata for comments on a document or docket
 # (Along the way, get any missing documents)
+
+max_number <- 1000000000
+
 save_comments <- function(docket){
 
   message(docket, appendLF = F)
@@ -447,12 +450,12 @@ save_comments <- function(docket){
       message(" | ", nrow(comments) - 1, " comments |")
 
       # if there are more than 100k comments, skip it (we will get these from bulk data)
-    if(  nrow(comments) > 100000 ){
+    if(  nrow(comments) > max_number ){
       save(det_file, file = det_file |> str_replace("details", "MoreThan100k"))
     }
 
     # otherwise, GET COMMENT_DETAILS
-    if( !file.exists(det_file) & nrow(comments) <= 100000 & "id" %in% colnames(comments)){
+    if( !file.exists(det_file) & nrow(comments) <= max_number & "id" %in% colnames(comments)){
 
       message("|   Getting comment details")
 
@@ -476,7 +479,7 @@ save_comments <- function(docket){
 
       message(nrow(comments_missing), " of ", nrow(comments), " missing |")
 
-      if(nrow(comments_missing)>0 & nrow(comments_missing)<10000 & "id" %in% colnames(comments) ){ #FIXME change to 100k when bulk data is formatted correctly such that id is id
+      if(nrow(comments_missing)>0 & nrow(comments_missing)<max_number & "id" %in% colnames(comments) ){ #FIXME change to 100k when bulk data is formatted correctly such that id is id
       # get missing comment details
       comment_details2 <- get_comment_details(comments_missing$id, api_keys = keys) |>
         distinct()
