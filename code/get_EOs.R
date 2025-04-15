@@ -1,30 +1,29 @@
-
-
 source("setup.R")
+
 # keys saved up one directory from this project folder
 load("../keys.rda")
 
 library(regulationsdotgov)
 
+EOs <- read_csv(here::here("data", "documents_of_type_presidential_document_and_of_presidential_document_type_executive_order.csv")) |>
+    pull("executive_order_number")
 
-  searchTerm <- c("expertise", "expert",
-                  "complex",  "complexity",
-                  "evidence-based", "evidence based",
-                  searchTerm) |> unique()
+a <- paste("E.O.", EOs)
+  b <-  paste("EO", EOs)
+c <- paste("Executive Order", EOs)
+  searchTerm <- c(a,b,c)
+
+  subdir = "EOs"
+
 
 
   documents = c("documents", "comments")
   # documents = "comments"
 
 
-  search_to_rda <- function(searchTerm,
-                            documents,
-                            #subdir,
-                            lastModifiedDate = Sys.Date() ){
+  search_to_rda <- function(searchTerm, documents, subdir, lastModifiedDate = Sys.Date() ){
 
-    directory <- here::here("data", "search",
-                            #subdir,
-                            searchTerm)
+    directory <- here::here("data", "search", subdir, searchTerm)
     dir.create(directory)
     file <- here::here(directory, paste0(searchTerm, "_", documents, ".rda"))
 
@@ -59,8 +58,8 @@ if(documents == "comments"){
   for(documents in documents){
     purrr::walk(searchTerm,
                 documents,
-                # subdir = subdir,
-                # lastModifiedDate = "2025-02-02T04:59:59Z",
+                subdir = subdir,
+                #lastModifiedDate = "2025-02-02T04:59:59Z",
                 .f = search_to_rda) #FIXME Possiblly ?
   }
 

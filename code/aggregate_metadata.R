@@ -87,17 +87,25 @@ load(here::here("data", "metadata",  "all_documents.rda"))
 library(magrittr)
 all_documents %<>% full_join(d) %>% distinct()
 
-d |> count(id, sort = T)|> filter(n > 1)
+duplicates <- d |> count(objectId, sort = T)|> filter(n > 1)
+
+duplicate_object_id <- d |> filter(objectId %in% duplicates$objectId) |> arrange(objectId)
+
+duplicates <- d |> count(id, sort = T)|> filter(n > 1)
+
+duplicates_id <- d |> filter(id %in% duplicates$id) |> arrange(id)
 
 agency[!agency %in% d$agencyId]
 
-save(documents, file = here::here("data", "metadata",  "all_documents.rda"))
+save(all_documents, file = here::here("data", "metadata",  "all_documents.rda"))
 
 documents_count <- d |>
   mutate(year = str_sub(postedDate, 1,4)) |>
   distinct(id, documentType, year, agencyId, docketId) |>
   group_by(documentType, year, agencyId, docketId) |>
   count()
+
+documents_count |> filter(agencyId == "NSF")
 
 save(documents_count,
      file = here::here("data", "metadata",  "documents_count.rda"))
