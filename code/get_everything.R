@@ -391,8 +391,14 @@ save_comments <- function(docket){
     #save(documents, file = doc_file)
 
     # FIXME when get_document_details is working
-    # document_details <- map_dfr(documents$id, get_document_details)
-    # save( document_details, file = str_replace(doc_file, "documents.rda", "document_details.rda")
+    document_details <- map_dfr(documents$id,
+                                possibly(
+                                  get_document_details,
+                                  message(" | Error |")# , appendLF = F)
+                                  )
+    )
+    save( document_details,
+          file = str_replace(doc_file, "documents.rda", "document_details.rda"))
 
 
   } else { # if document metadata does not exist, get it
