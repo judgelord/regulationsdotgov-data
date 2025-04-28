@@ -1,14 +1,18 @@
 # load commonly used packages
  source("setup.R")
 
-set_here(path="/Volumes/Devin's 5TB/regulationsdotgov-DATA")
 
 metadata_root <- here::here("data", "metadata")
 
 files_root <- here::here("data", "files")
 
-metadata_root %<>% str_replace("/Volumes/Devin's 5TB/",  
+
+if(F){
+metadata_root %<>% str_replace("/Volumes/Devin's 5TB/",
                                "/Users/judgelor/University of Michigan Dropbox/Devin Judge-Lord/")
+}
+
+metadata_root
 
 dir.create(files_root)
 
@@ -39,7 +43,7 @@ head(docs)
 dir.create(here::here(files_root, docs$agency[1]))
 
 # make sure there is a directory for each agency
-agencies <- docs$agency |> unique() 
+agencies <- docs$agency |> unique()
 
 for(i in agencies) {
   dir.create(here::here(files_root, i))
@@ -64,16 +68,15 @@ create_doc_folder <- function(agency, docket, document){
 pwalk(list(docs$agency, docs$docket, docs$document), .f = create_doc_folder)
 ############# END CREATE DIRECTORIES ###################
 
+
+
+
+
+
 #####################
 # 2. Download files #
 #####################
 
-# a document for testing
-test <- 8
-agency <- docs$agency[test]
-docket <- docs$docket[test]
-document <- docs$document[test]
-metadata_path <- docs$metadata_path[test]
 
 # HELPERS
 # file hierarchy to determine which files are downloaded
@@ -87,7 +90,7 @@ file_hierarchy <- tibble(
              "jpg", "jpeg", "bmp", "tif", "png", "gif",
              "mp4"),
   priority = c(5, 5, 5,
-               4, 4, 4, 4, 
+               4, 4, 4, 4,
                4, 4, 4,
                4, 4,
                3, 3,
@@ -95,6 +98,16 @@ file_hierarchy <- tibble(
                1, 1, 1, 1, 1,1,
                1)
 )
+
+
+
+# a document for testing
+test <- 8
+agency <- docs$agency[test]
+docket <- docs$docket[test]
+document <- docs$document[test]
+metadata_path <- docs$metadata_path[test]
+
 
 ### MAIN FUNCTION
 download_attachments <- function(agency, docket, document, metadata_path){
@@ -156,9 +169,13 @@ download_attachments <- function(agency, docket, document, metadata_path){
   }
 ## END MAIN FUNCTION
 
+
+
+
 # Index of documents from the docs data to download comments on
 start = 0
-stop = start + 1000 
+# start = stop
+stop = start + 1000
 stop = nrow(docs)
 
 # make a list to map over
