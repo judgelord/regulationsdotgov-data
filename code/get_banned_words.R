@@ -18,9 +18,10 @@ library(regulationsdotgov)
 
   searchTerm <- searchTerm[!searchTerm %in% c("gender identity", "definition", "expression", "sex", "sexuality",
                                               "accessible", "entitlement", "equality",
-                                              "genders",
+                                              "genders", "anglo-saxon",
                                               "women",
                                               "science-based",
+                                              "Americanize", "Americanization",
                                               "enhance the diversity", "female",
                                               "consultation", "orientation",
                                               "accessable", "accessibility", "Women", "clean energy",

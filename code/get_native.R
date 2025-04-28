@@ -16,13 +16,18 @@ library(regulationsdotgov)
     drop_na(Strings) |>
     mutate(string = str_split(Strings, "\\|")) |>
     unnest(string) |>
-    filter(!str_detect(string, "/")) |>
-    mutate(string = str_squish(string)) |>
+    filter(!str_detect(string, "/"),
+           #!string %in% c("Soaring Eagle") #??? WHY DOES THIS FAIL 500?
+           ) |>
+    mutate(string = string |>
+             str_remove_all("\\\\\\\\b") |>
+             str_remove_all(",|\\$|\\^") |>
+             str_squish()) |>
     pull(string) |>
     unique()
 
-  head(searchTerm)
-
+  searchTerm[927]
+  tail(searchTerm, 1000)
 
 
   types = c("documents", "comments")
@@ -65,6 +70,8 @@ if(type == "comments"){
     }
   }
 
+  search_to_rda(tail(searchTerm, 1), types[2], subdir)
+
 # map over search terms for each document type
   for(type in types){
     purrr::walk(searchTerm,
@@ -73,5 +80,7 @@ if(type == "comments"){
                 #lastModifiedDate = "2025-02-02T04:59:59Z",
                 .f = search_to_rda) #FIXME Possiblly ?
   }
+
+
 
 
