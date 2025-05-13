@@ -36,68 +36,35 @@ library(tidyverse)
 library(httr)
 library(jsonlite)
 library(magrittr)
+library(here)
 
 # keys saved up one directory from this project folder
 load("../keys.rda")
 
 
-# the dockets we already have
-#FIXME document folders and getting recorded as docket forlders here, causing incorrect and unnecessary calls
-dockets <- list.dirs("data/metadata")
-
-dockets <- tibble(
-  agency = str_extract(dockets, ".*/") |> str_remove("/$") |> str_remove(".*/"),
-  docket = str_remove(dockets, ".*/")
-)
-
-# drop paths to agencies or documents rather than documents
-dockets <- dockets |>
-  filter(str_detect(docket, "-"),
-         !str_detect(agency, "-"))
-
-# PICK AN ORDER
-dockets %<>% arrange(rev(docket))
-dockets %<>% arrange(docket)
-
-
-
-agencies <- dockets$agency
-
-
-problem_documents <- tribble(
-  ~docket, ~document, ~objectId,
-  "APHIS-2022-0003", "APHIS-2022-0003-0001", "0900006484e23ccb",
-  "HHS-OS-2011-0023", "HHS-OS-2011-0023-0002", "0900006480ed4b59"
-  ## FIXME Commenting out for now because these no longer seem to be problems
-#   "WHD-2017-0002", "WHD-2017-0002-0001",  "0900006482969fbd", # expected 140-214k
-#   "WHD-2017-0003", "WHD-2017-0003-0001", "0900006482cdbe54", # expected 218-376k https://www.regulations.gov/docket/WHD-2017-0003
-#   "WHD-2019-0001","WHD-2019-0001-0001", "0900006483b173dc",
-#   "PHMSA-2021-0039", "PHMSA-2021-0039-2101", "0900006485c21b4f",
-#   "PHMSA-2021-0058", "PHMSA-2021-0058-0002", "0900006484e3545a",
-#   "NHTSA-2022-0079", "NHTSA-2022-0079-0015", "090000648637d7c0" # expecting 18,317 - https://www.regulations.gov/document/NHTSA-2022-0079-0015
-  )
-#
-dockets %<>%
-  filter(!docket %in% problem_documents$docket)
-
-
-
-# or select a new agency
-agency <- "CFPB"
-
 # AGENCIES MISSING FROM ORIGINAL SCRAPE (BECAUSE THEY DON'T USE DOCKETS)
 # THAT I KNOW HAVE DOCUMENTS ON REGULATIONS.GOV
 # (see minimal counts of documents in data/missing.rda)
-c('FCC', 'SEC', 'FRS', 'FDIC', 'CFTC', 'FHFA', 'FERC', 'FCA', 'GEO', 'FHFB', 'LSC', 'STB', 'FEC', 'MSPB', 'ARTS', 'USPS', 'CRB', 'CRC', 'OFHEO',
+if(F){
+agencies <- c('FCC', 'SEC', 'FRS', 'FDIC', 'CFTC', 'FHFA', 'FERC', 'FCA', 'GEO', 'FHFB', 'LSC', 'STB', 'FEC', 'MSPB', 'ARTS', 'USPS', 'CRB', 'CRC', 'OFHEO',
               'ODNI', 'RISC', 'PRC', 'PC', 'SSS', 'PHS', 'NCPC', 'ABMC', 'CIA', 'FLRA', 'PT', 'DRBC', 'RRB', 'SIGAR', 'OSTP', 'GCERC', 'HOPE', 'NWTRB', 'OPIC',
               'OSHRC', 'RATB', 'TVA', 'ADF', 'CSOSA', 'SS', 'NSA', 'EOP', 'FPPO', 'FCSIC', 'FMCS', 'NA', 'GAO', 'IIO', 'ITC', 'JBEA', 'MCC', 'MSHFRC', 'NCMNPS',
-              'NMB', 'SRBC', 'CDFIF') %in% dockets$agency
+              'NMB', 'SRBC', 'CDFIF')
 
-# create directories for each agency
+# create directories for each agency in docket metadata
 walk(here::here("data", "metadata",  agencies), dir.create)
+}
+
+# Re-define agencies as all agency folders
+agencies <- list.dirs(here("data", "metadata"),
+                      recursive = F,
+                      full.names = F)
 
 
-# SAVE IN SEPERATE FILES IN DOCKET FOLDERS
+######################################################
+# COLLECT DOCKET METADATA WE DON'T HAVE FOR AGENCIES #
+######################################################
+
 save_dockets <- function(agency){
   message(agency)
   dockets <- map_dfr(agency, get_dockets, api_keys = keys)
@@ -112,7 +79,7 @@ save_dockets <- function(agency){
   save(dockets, file = file)
 }
 
-# COLLECT DOCKET METADATA WE DON'T HAVE FOR AGENCIES
+# loop over all agencies
 for (agency in agencies){
 
   file <- here::here("data", "metadata",
@@ -145,13 +112,14 @@ for (agency in agencies){
       message("An error occured ", e$message)
     })
   }
-  }
+}
 
 
-# all agency folders
-# agency <- list.dirs("data", "metadata",  recursive = F) |> str_remove("data/")
 
-# create directories for each docket
+#######################################
+# create directories for each docket #
+######################################
+
 #FIXME warnings + error message need to be worked on
 for (agency in agencies) {
   message(agency)
@@ -200,161 +168,6 @@ for (agency in agencies) {
 
 
 
-#### Get documents from each docket
-
-
-# SAVE IN SEPERATE FILES IN DOCKET FOLDERS - FOR AGENCIES WITH DOCKET STRUCTURE
-save_documents <- function(docket, agency){
-
-  file <- here::here("data", "metadata",
-                     agency, #str_extract("[A-Z]"), docket),
-                     # should we require an agency argument here, or is there a reliable way to split agencies and dockets, e.g., by looking for years -19[0-9][0-9]- or -20[0-9][0-9]-
-                     docket,
-                     paste0(docket, "_documents.rda"))
-
-
-  message (paste(Sys.time(), agency, docket))
-
-  if(!file.exists(file)){
-    documents <- map_dfr(docket, get_documents, api_keys = keys)
-    message(paste("|", docket, "| n =", nrow(documents), "|"))
-    save(documents, file = file)
-  } else {
-    message(paste(file, "already exists"))
-  }
-}
-
-# loop over a vector of agencies
-for(agency in agencies){
-  # load dockets
-  load(here::here("data", "metadata",  agency, paste0(agency, "_dockets.rda")))
-
-  # id doc metadata already downloaded
-
-  #FIXME alternatively, specify a date of last run and merge in with exisiting metadata file
-  downloaded <- list.files(path = here::here("data", "metadata",agency), pattern = "_documents.rda", recursive = TRUE) |>
-    str_remove_all(".*/|_documents.rda") # I added the downloaded object back in -MK
-
-  # if dockets metadata is not empty & docket metadata was not already downloaded, save documents for each docket
-  if("id" %in% names(dockets)){
-
-    dockets %<>% filter(!(id %in% downloaded))
-
-    walk2(dockets$id, dockets$agencyId, possibly(save_documents,
-                                                 otherwise = print("documents.rda file already exists")))
-  } else{
-    message(paste(agency, "has no document metadata returned by regulations.gov"))
-  }
-}
-
-
-#SAVE DOCUMENT FILE FOR AGENCIES *WITHOUT* DOCKET STRUCTURE
-#for(agency in agencies){
-#
-#  file <- here::here("data", "metadata",
-#                     agency, #str_extract("[A-Z]"), docket),
-#                     # should we require an agency argument here, or is there a reliable way to split agencies and dockets, e.g., by looking for years -19[0-9][0-9]- or -20[0-9][0-9]-
-#                     paste0(agency, "_documents.rda"))
-#
-#  if(!file.exists(file) | length(file) == 1){
-#    documents <- get_documents(docketId = agency, api_keys = keys)
-#    message(paste("| n =", nrow(documents), "|"))
-#    save(documents, file = file)
-#  } else {
-#    message(paste(file, "already exists"))
-#  }
-#}
-
-
-
-# Documents
-save_docs <- function(docket){
-
-  message(docket)
-
-  # for testing
-  # docket <- dockets$docket[1]
-  doc_file <- here::here("data", "metadata",
-                         str_extract(docket, "[A-Z]+"), # agency
-                         docket,
-                         paste(docket, "documents.rda", sep = "_"))
-
-  if( file.exists(doc_file) ){
-    load(doc_file) #FIXME  update this with new docs since most recent document date
-  } else {
-    documents <- get_documents(docket, api_keys = keys) |> distinct()
-
-    save(documents, file = doc_file)
-  }
-
-  # subset to proposed rules and notices that took comments
-  d <- documents |>
-    #filter(documentType %in% c("Proposed Rule", "Notice")) |>
-    rename(document_subtype = subtype,
-           commentOnId = objectId,
-           document_title = title) |>
-    #FIXME not sure if a 0 comment document was the source of the error I got
-    drop_na(commentStartDate)
-
-
-  # HELPER FUNCTION
-  create_doc_dir <- function(document){
-
-    message(document, " | ")
-
-    doc_dir <- here::here("data", "metadata",
-                          str_extract(docket, "[A-Z]+"), # agency
-                          docket,
-                          document)
-
-    dir.create(doc_dir)
-  }
-
-  # save comments on specific documents
-  walk(d$id, create_doc_dir)
-
-
-}
-
-# test
-walk(head(dockets$docket, 4), possibly(save_docs, otherwise = print("nope")))
-
-# all of them
-walk(dockets$docket, possibly(save_docs, otherwise = print("nope")))
-
-
-# the agencies we already have
-doc_list <- list.dirs("data/metadata")
-
-docs <- tibble(
-  directory = doc_list,
-  agency = str_remove(doc_list, ".*metadata/") |> str_remove("/.*"),
-  docket = str_remove(doc_list, ".*metadata/") |> str_remove("/.+?"),
-  document = str_remove(doc_list, ".*/")
-)
-
-docs <- docs |>  filter(str_detect(docket, "/")) |>
-  mutate(docket = str_remove(docket, "/.*") )
-
-### OLD CODE FIXING ERROR IN FILE PATHS
-# docs <- docs |>
-#   mutate(old_filename = here::here(directory, paste(document, "comments.rda", sep = "_")) |> str_remove(paste0(document, "/")),
-#          new_filename = here::here(directory, paste(document, "comments.rda", sep = "_"))
-#          )
-#
-# file.rename(docs$old_filename, docs$new_filename)
-
-
-# ## OLD CODE FIXING ERROR IN FILE PATHS
-# docs <- docs |>
-#   mutate(old_filename = here::here(directory, paste(document, "comment_details.rda", sep = "_")) |> str_remove(paste0(document, "/")),
-#          new_filename = here::here(directory, paste(document, "comment_details.rda", sep = "_"))
-#          )
-#
-# file.rename(docs$old_filename, docs$new_filename)
-
-
-
 
 
 #######################################################
@@ -364,21 +177,69 @@ docs <- docs |>  filter(str_detect(docket, "/")) |>
 #######################################################
 #### Get metadata for comments on a document or docket
 # (Along the way, get any missing documents)
+# for testing
+# docket <- dockets_df$docket[1]
+# the dockets we already have
+#FIXME document folders and getting recorded as docket forlders here, causing incorrect and unnecessary calls
+dockets <- list.dirs("data/metadata")
 
+dockets_df <- tibble(
+  agency = str_extract(dockets, ".*/") |> str_remove("/$") |> str_remove(".*/"),
+  docket = str_remove(dockets, ".*/")
+)
+
+# inspect agencies with dashes in their name
+dockets_df |>
+  filter(str_detect(agency, "-|_")) |>
+  distinct(agency)
+
+# drop paths to agencies or documents rather than documents
+dockets_df <- dockets_df |>
+  filter(str_detect(docket, "-"),
+         !str_detect(agency, "-|_")) #FIXME some agencies may have dashes in their names?
+
+# look at longest paths
+dockets_df |>
+  #filter(agency == "VA") |>
+  arrange(-nchar(docket))
+
+# look at shortest paths
+dockets_df |>
+  #filter(agency == "VA") |>
+  arrange(nchar(docket))
+
+
+# PICK AN ORDER
+dockets_df %<>% ungroup()
+dockets_df %<>% arrange(rev(docket))
+dockets_df %<>% arrange(docket)
+
+
+
+########################
+# FUNCTION            #
+########################
 max_number <- 1000000
 
-save_comments <- function(docket){
+save_everything <- function(docket){
 
-  message(docket, appendLF = F)
+  message(" | ", docket, appendLF = F)
 
-  # for testing
-  # docket <- dockets$docket[1]
+  # file path for document metadata
+  docket_dir <- here::here("data", "metadata",
+                         str_extract(docket, "[A-Z]+"), # agency
+                         docket)
+  if(!dir.exists(docket_dir)){
+    dir.create(docket_dir)
+  }
 
   # file path for document metadata
   doc_file <- here::here("data", "metadata",
                          str_extract(docket, "[A-Z]+"), # agency
                          docket,
                          paste(docket, "documents.rda", sep = "_"))
+
+  doc_det_file = str_replace(doc_file, "documents.rda", "document_details.rda")
 
 
   if( file.exists(doc_file) ){ # if the document metadata exists, load it
@@ -387,28 +248,31 @@ save_comments <- function(docket){
 
     documents %<>% distinct()
 
-    # FIXME -- TEMPORARY uniquing comment files saved with rbind
-    #save(documents, file = doc_file)
+    # if there documents but document details file does not exist, get detials
+    if( "id" %in% names(documents) & !file.exists(doc_det_file) ){
 
-    # FIXME when get_document_details is working
+      message(" | getting document details ")
+
     document_details <- map_dfr(documents$id,
                                 possibly(
-                                  get_document_details,
-                                  message(" | Error |")# , appendLF = F)
+                                  get_document_details#,
+                                  # FIXME: This message was printing every time even when there was no error
+                                  #otherwise =  print(" | get_document_details Error |")# , appendLF = F)
                                   )
-    )
+                                )
     save( document_details,
           file = str_replace(doc_file, "documents.rda", "document_details.rda"))
-
+    }
 
   } else { # if document metadata does not exist, get it
-    message(" | getting documents")
+    message(" | getting documents ")
     documents <- get_documents(docket, api_keys = keys) |>
       distinct()
 
     save(documents, file = doc_file)
   }
 
+  if("objectId" %in% names(documents)){
   # subset to documents that were open for comment comments
   d <- documents |>
     #filter(documentType %in% c("Proposed Rule", "Notice")) |> # FIXME, consider comments on other docs for next pass
@@ -419,10 +283,18 @@ save_comments <- function(docket){
     #FIXME not sure if a 0 comment document was the source of the error I got
     drop_na(commentStartDate)
 
-  message(" | ", nrow(d), " document(s) open for comment | ")
+  message("      | ", nrow(d), " document(s) open for comment | ")
 
   # HELPER FUNCTION TO GET AND SAVE COMMENTS AND COMMENT DETAILS
-  save_commentsOnId <- function(objectId, document){
+  save_commentsOnId <- function(objectId, document, openForComment){
+
+    if(openForComment){
+    message("Was open for comment, recollecting ", appendLF = F)
+    }
+
+    # FOR TESTING
+    # objectId <- d$commentOnId[1]
+    # document <- d$id[1]
 
     # each document gets a folder in the docket folder
     doc_dir <- here::here("data", "metadata",
@@ -443,12 +315,12 @@ save_comments <- function(docket){
     det_file <- str_replace(comments_on_document_file, "comments.rda", "comment_details.rda")
 
     ## if we don't already have comment_details metadata, get it
-    if(!file.exists( det_file )){
+    if(!file.exists( det_file ) | openForComment){
 
     ## If we also need comment metadata, first get it
-    if( !file.exists(comments_on_document_file) ){
+    if( !file.exists(comments_on_document_file) | openForComment){
 
-      message("|  Getting comments on ", document, " | ", appendLF = F)
+      message(" | ", document, " | ", appendLF = F)
 
       comments <- get_commentsOnId(objectId, api_keys = keys)
 
@@ -456,7 +328,7 @@ save_comments <- function(docket){
            file = comments_on_document_file)
 
     } else { # if comment metadata file already exists, load it
-      message("|  Loading comments on ", document, " | ", appendLF = F)
+      message(" | ", document, " |  Loading comments | ", appendLF = F)
 
       load(comments_on_document_file)
 
@@ -477,7 +349,7 @@ save_comments <- function(docket){
       #save(comments, file = comments_on_document_file)
     }
 
-      message(" | ", nrow(comments) - 1, " comments |")
+      message(nrow(comments) - 1, " comments |")
 
       # if there are more than 100k comments, skip it (we will get these from bulk data)
     if(  nrow(comments) > max_number ){
@@ -487,7 +359,7 @@ save_comments <- function(docket){
     # otherwise, GET COMMENT_DETAILS
     if( !file.exists(det_file) & nrow(comments) <= max_number & "id" %in% colnames(comments)){
 
-      message("|   Getting comment details")
+      message("|   Getting comment details | ")
 
       comment_details <- get_comment_details(comments$id, api_keys = keys) |>
         distinct()
@@ -496,7 +368,7 @@ save_comments <- function(docket){
     }
 
     } else { # if det_file exists
-      message("|    Comment_details.rda exists, loading | ", appendLF = F)
+      message(" | ", document, " |  Loading comment details | ", appendLF = F)
 
       # load comments metadata
       load(comments_on_document_file)
@@ -507,7 +379,7 @@ save_comments <- function(docket){
       # subset comment metadata to comments missing from comment_details
       comments_missing <- filter(comments, !id %in% comment_details$id)
 
-      message("|", nrow(comments_missing), " comments | ", nrow(comments), " missing |")
+      message(nrow(comments), " comments | ", nrow(comments_missing), " missing |")
 
       if(nrow(comments_missing)>0 & nrow(comments_missing)<max_number & "id" %in% colnames(comments) ){ #FIXME change to 100k when bulk data is formatted correctly such that id is id
       # get missing comment details
@@ -524,19 +396,26 @@ save_comments <- function(docket){
   }
 
   # save comments on specific documents
-  walk2(d$commentOnId, d$id, save_commentsOnId)
+  pwalk(
+    list(
+      d$commentOnId,
+      d$id,
+      d$openForComment
+      ),
+    .f = save_commentsOnId)
 
+} else( message("| No documents for ", docket, " |") )
 }
 
 
 # test
-walk(head(dockets$docket, 4), save_comments)
+walk(head(dockets_df$docket, 4), save_everything)
 
 # apply to all
-walk(dockets |>
-       filter(agency != "FCC") |>
+walk(dockets_df |>
+       #filter(agency != "FCC") |>
        pull(docket),
-     possibly(save_comments, otherwise = print("nope")))
+     possibly(save_everything, otherwise = print("nope")))
 
 
 
@@ -546,6 +425,9 @@ walk(dockets |>
 # docket <- "AMS-NOP-21-0073" # DONE VIA BULK (IT DID WORK AFTER ALL)
 
 # save_comments(docket)
+
+
+
 
 
 
