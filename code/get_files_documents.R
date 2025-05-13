@@ -27,6 +27,9 @@ docs <- tibble(
   details = str_remove(doc_list, ".*/")
 )
 
+
+docs %<>% arrange(rev(docket))
+
 # inspect
 head(docs)
 
@@ -39,7 +42,7 @@ dir.create(here::here(files_root, docs$agency[1]))
 # make sure there is a directory for each agency
 agencies <- docs$agency |> unique()
 
-agencies <- agencies[1]
+# agencies <- agencies[1]
 
 for(i in agencies) {
   dir.create(here::here(files_root, i))
@@ -158,8 +161,6 @@ download_documents <- function(agency, docket,  metadata_path){
 
 # Index of dockets from the docs data to download comments on
 start = 0
-stop = 10
-
 # start = stop
 stop = start + 10
 # stop = nrow(docs)
