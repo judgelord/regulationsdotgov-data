@@ -404,6 +404,17 @@ save_everything <- function(docket){
       ),
     .f = save_commentsOnId)
 
+  # if any documents were open for comment, recollect documents
+  if(sum(d$openForComment) > 0){
+    message(" | getting documents ")
+    documents2 <- get_documents(docket, api_keys = keys) |>
+      distinct()
+
+    documents <- full_join(documents, documents2)
+
+    save(documents, file = doc_file)
+  }
+
 } else( message("| No documents for ", docket, " |") )
 }
 
