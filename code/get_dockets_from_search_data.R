@@ -1,4 +1,7 @@
-library(here)
+# get_dockets in particular and the API in general miss some dockets and agencies. We've made a lot of progress (see, e.g., judgelord/regulationsdotgov#37)
+
+# This script leverages search results that return documents and comments. get_dockets_from_search_data.R gets docket ids from search data. I used this to fill in some gaps in missing dockets. It is not perfect, but it likely fills in a lot of the missingness.library(here)
+
 library(tidyverse)
 library(magrittr)
 

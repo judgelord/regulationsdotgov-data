@@ -1,3 +1,5 @@
+# in contrast to get_everything, this just gets documents and document details, not comments
+
 # load commonly used packages
 source("setup.R")
 
