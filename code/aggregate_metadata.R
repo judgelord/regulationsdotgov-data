@@ -60,10 +60,13 @@ for(agency in agencies){
     message(paste("Missing", agency))
     }
 }
+# END Agency-level aggregation
+
+
+
+
 ###################
 # Aggregate all agency-level document metadata and save in data folder
-# files <- list.files(pattern = "^[A-Z]*_documents.rda", recursive = T)
-
 files = here::here("data", "metadata", agencies, paste0(agencies, "_documents.rda"))
 
 length(files) == length(agency)
@@ -134,3 +137,94 @@ documents_count %>%
 
 
 
+
+################################################################
+# AGGREGATE COMMENTS #
+################################################################
+
+# Aggregate docket-level comments metadata to agency level and save in agency folder
+for(agency in agencies){
+
+  # comment metadata in docket folders
+  files <- list.files(pattern = paste0(
+    agency, ".*_comments.rda"), recursive = T
+  )
+
+
+
+  if(quite == F){
+    dir <- list.dirs(here::here("data", "metadata", agency), recursive = F)
+    dirs <- list.dirs(here::here("data", "metadata", agency), recursive = T)
+
+
+    message("|",agency, "|", length(dir), " docket folders|")
+    message("|",agency, "|", length(dirs), " document folders|")
+  }
+
+  # one file per document, should be about the same as the number of dockets
+  message("|",agency, "|", length(files), " document-level comment metadata files|")
+
+  if(length(files) > 0){
+
+    # init
+    load(files[1])
+    d <- comments
+
+    # concat files
+    for(file in files){
+      load(file)
+
+      temp <- comments
+
+      if(!length(temp) == 0){
+        d <<- suppressMessages(full_join(d, temp))
+      } else {
+        message(file, " is empty")
+        file.rename(file,
+                    file |> str_replace("_comments.rda", "_comments_MISSING.rda"))
+      }
+    }
+
+    # count of comments
+    message("|",agency, "|", nrow(d), " comments in metadata|")
+
+    comments <- d
+
+    save(comments,
+         file = here::here("data", "metadata",
+                           agency,
+                           paste0(agency, "_comments.rda") )
+         )
+  } else {
+    message( paste("Missing", agency) )
+  }
+}
+# END Agency-level aggregation
+
+
+
+###################
+# Aggregate all agency-level comment metadata and save in data folder
+files = here::here("data", "metadata", agencies, paste0(agencies, "_comments.rda"))
+
+length(files) == length(agency)
+
+# init
+load(files[1])
+d <- comments
+
+# trying again, this works
+for(file in files){
+  if(file.exists(file)){
+    message( file |> str_remove(".*/") )
+    load(file)
+
+    temp <- comments
+
+    d <<- suppressMessages(full_join(d, temp))
+  } else {
+    message(file, "DOES NOT EXIST")
+  }
+}
+
+load(here::here("data", "metadata",  "all_comments.rda"))
