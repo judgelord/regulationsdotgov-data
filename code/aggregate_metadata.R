@@ -3,6 +3,8 @@ library(tidyverse)
 agencies <- list.dirs(here::here("data", "metadata"), recursive = F) |>
   str_remove(".*/") |> rev()
 
+# faster not to count the folders
+quite = T
 
 # Aggregate docket-level documents metadata to agency level and save in agency folder
 for(agency in agencies){
@@ -12,13 +14,19 @@ for(agency in agencies){
     agency, ".*_documents.rda"), recursive = T
   )
 
+  # one file per docket, should be about the same as the number of dockets
+  message("|",agency, "|", length(files), " docket-level document metadata files|")
+
+
+  if(quite == F){
   dir <- list.dirs(here::here("data", "metadata", agency), recursive = F)
   dirs <- list.dirs(here::here("data", "metadata", agency), recursive = T)
 
 
   message("|",agency, "|", length(dir), " docket folders|")
   message("|",agency, "|", length(dirs), " document folders|")
-  message("|",agency, "|", length(files), " document metadata files|")
+  }
+
 
   # # aggregated metadata for the whole agency
   # done <- list.files(pattern = paste0(
