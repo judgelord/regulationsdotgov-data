@@ -208,6 +208,11 @@ dockets_df |>
   #filter(agency == "VA") |>
   arrange(nchar(docket))
 
+# THESE INITIALLY FALSELY RETURNED 0 DOCUMENTS, not sure why
+d2 <- dockets_df |>
+  filter(docket %in%
+           c("EPA-HQ-OAR-2002-0037", "EPA-HQ-OAR-2018-0167", "FWS-R4-ES-2012-0103" ))
+
 
 # PICK AN ORDER
 dockets_df %<>% ungroup()
@@ -245,6 +250,16 @@ save_everything <- function(docket){
   if( file.exists(doc_file) ){ # if the document metadata exists, load it
 
     load(doc_file) #FIXME  update this with new docs since most recent document date
+
+    # if missing valid document data, try again
+    if(!"id" %in% names(documents) ) {
+
+      message("| empty documents file, trying again | ")
+
+      documents <- get_documents(docket, api_keys = keys) |> distinct()
+
+      save(documents, file = doc_file)
+    }
 
     documents %<>% distinct()
 
@@ -441,6 +456,11 @@ walk(dockets_df |>
 
 # save_comments(docket)
 
+## MISSING COMMENTS TO INVESTEGATE
+
+EPA-HQ-OAR-2002-0037
+EPA-HQ-OAR-2018-0167
+FWS-R4-ES-2012-0103
 
 
 
