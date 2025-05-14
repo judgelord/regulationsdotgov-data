@@ -25,6 +25,15 @@ for(i in dockets){
 docket <- i
 agency <- str_extract(docket, "[A-Z]+") # str_remove(dockets, "-.*") #FIXME WHICH ONE DO WE WANT
 
+done <- here::here("data", "datasheets", agency) |>
+  list.files() |>
+  str_remove("_org_comments.*")
+
+message(docket, " already in datasheets folder? ", docket %in% done)
+
+#FIXME SKIP ONES ALREADY DONE
+if(docket %in% done) next
+
 ####################
 # Comment metadata #
 ####################
@@ -34,7 +43,12 @@ comments_files <- list.files(
   recursive = T,
   full.names = T)
 
+if(length(comments_files) == 0) {message("missing")}
+
+if(length(comments_files) == 0) next
+
 load(comments_files[1])
+
 
 # init
 comments_combined <- comments
@@ -44,6 +58,9 @@ for(j in comments_files){
   load(j)
   comments_combined <<- full_join(comments_combined, comments)
 }
+
+message(nrow(comments_combined) -1, " comments")
+
 
 ###########
 # details #
@@ -279,7 +296,7 @@ d %<>%
   mutate(comment_url = str_c("https://www.regulations.gov/comment/",
                              document_id),
          comment_on_document_url = str_c("https://www.regulations.gov/document/",
-                             comment_on_document_id),
+                                         comment_on_document_id),
          docket_url = str_c("https://www.regulations.gov/docket/",
                             document_id %>% str_remove("-[0-9]*$")))
 
@@ -304,6 +321,7 @@ d %<>% select(
   comment_text,
   #attachment_txt,
   organization,
+  any_of(c('city','country','firstName','lastName','govAgency','govAgencyType','stateProvinceRegion','submitterRep','subtype','category','zip','address1','address2','docAbstract','pageCount')),
   comment_title,
   attachment_count,
   attachment_urls,
