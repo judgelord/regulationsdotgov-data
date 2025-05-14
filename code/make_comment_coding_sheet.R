@@ -14,8 +14,8 @@ dockets <- c(
   # "BSEE-2015-0002",
   # "EPA-HQ-OW-2022-0901"
 )
-agencies <- str_extract(dockets, "[A-Z]+") # str_remove(dockets, "-.*") #FIXME WHICH ONE DO WE WANT
 
+agencies <- str_extract(dockets, "[A-Z]+")
 
 # create directories for each agency
 walk(here::here("data", "datasheets", agencies), dir.create)
@@ -25,25 +25,49 @@ for(i in dockets){
 docket <- i
 agency <- str_extract(docket, "[A-Z]+") # str_remove(dockets, "-.*") #FIXME WHICH ONE DO WE WANT
 
+####################
+# Comment metadata #
+####################
+comments_files <- list.files(
+  here::here("data", "metadata",agency,docket),
+  pattern = "comments.rda",
+  recursive = T,
+  full.names = T)
 
-# LOAD DATA FROM DATA FOLDER
-# comment metadata
-here::here("data", "metadata",
-           agency,
-           docket,
-           paste(docket, "comments.rda", sep = "_")) |>
-  str_replace("rulemaking", "regulationsdotgov-data") |>
-  load()
+load(comments_files[1])
 
-# comment metadata (details )
-here::here("data", "metadata", agency, docket,
-paste(docket, "comment_details.rda", sep = "_")) |>
-  str_replace("rulemaking", "regulationsdotgov-data") |>
-  load()
+# init
+comments_combined <- comments
 
-comment_details %<>% left_join(comments) # |> rename(document_subtype = subtype))
+# loop to combine
+for(j in comments_files){
+  load(j)
+  comments_combined <<- full_join(comments_combined, comments)
+}
 
-d <- comment_details |> group_by(id) |>
+###########
+# details #
+###########
+comment_details_files <- list.files(
+  here::here("data", "metadata",agency,docket),
+  pattern = "comment_details.rda",
+  recursive = T,
+  full.names = T)
+
+load(comment_details_files[1])
+
+# init
+comment_details_combined <- comment_details
+
+# loop to combine
+for(j in comment_details_files){
+  load(j)
+  comment_details_combined <<- full_join(comment_details_combined, comment_details)
+}
+
+comment_details_combined %<>% full_join(comments_combined) # |> rename(document_subtype = subtype))
+
+d <- comment_details_combined |> group_by(id) |>
   mutate(attachment_count = unlist(attachments) |> length()/3,
          attachment_urls = unlist(attachments) |> paste(collapse  = ";", sep = ";") |> str_remove(";.*") ) |>
   ungroup()
@@ -252,26 +276,16 @@ d %>%
 ## AUGMENT FUNCTION
 # ad document name and link
 d %<>%
-  mutate(
-  # file_1 = ifelse(attachment_count > 0,
-  #                        str_c(document_id, "-1.pdf"),
-  #                        NA),
-  #        attachment_txt = ifelse(attachment_count > 0,
-  #                                str_c("https://ssc.wisc.edu/~judgelord/comment_text/",
-  #                                      document_id %>% str_remove("-.*$"), # agency folder
-  #                                      "/",
-  #                                      document_id %>% str_remove("-[A-z1-9]*$"), # docket folder
-  #                                      "/",
-  #                                      document_id,
-  #                                      "-1.txt"),
-  #                                NA),
-         comment_url = str_c("https://www.regulations.gov/comment/",
+  mutate(comment_url = str_c("https://www.regulations.gov/comment/",
                              document_id),
+         comment_on_document_url = str_c("https://www.regulations.gov/document/",
+                             comment_on_document_id),
          docket_url = str_c("https://www.regulations.gov/docket/",
                             document_id %>% str_remove("-[0-9]*$")))
 
 d$attachment_txt[1] #TODO
 d$comment_url[1]
+d$comment_on_document_url[1]
 d$docket_url[1]
 
 d %<>% rename(comment_title = title)
@@ -282,7 +296,7 @@ d %<>% select(
   docket_id,
   docket_url,
   #docket_title,
-  comment_on_document_id,
+  comment_on_document_url,
   comment_on_id,
   document_id,
   posted_date,
@@ -312,7 +326,7 @@ d %<>% mutate(position = "",
               ask3 = "",
               success = "",
               success_certainty = "",
-              sucess1 = "",
+              success1 = "",
               success2 = "",
               success3 = "",
               response = "",
