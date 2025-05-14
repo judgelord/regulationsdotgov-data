@@ -289,7 +289,7 @@ save_everything <- function(docket){
   save_commentsOnId <- function(objectId, document, openForComment){
 
     if(openForComment){
-    message("Was open for comment, recollecting ", appendLF = F)
+    message(document, "was open for comment ", appendLF = F)
     }
 
     # FOR TESTING
@@ -315,10 +315,14 @@ save_everything <- function(docket){
     det_file <- str_replace(comments_on_document_file, "comments.rda", "comment_details.rda")
 
     ## if we don't already have comment_details metadata, get it
-    if(!file.exists( det_file ) | openForComment){
+    if(
+      !file.exists( det_file ) #| openForComment
+       ){
 
     ## If we also need comment metadata, first get it
-    if( !file.exists(comments_on_document_file) | openForComment){
+    if(
+      !file.exists(comments_on_document_file) #| openForComment
+        ){
 
       message(" | ", document, " | ", appendLF = F)
 
@@ -328,7 +332,7 @@ save_everything <- function(docket){
            file = comments_on_document_file)
 
     } else { # if comment metadata file already exists, load it
-      message(" | ", document, " |  Loading comments | ", appendLF = F)
+      message(" | ", document, " | Loading comment metadata | ", appendLF = F)
 
       load(comments_on_document_file)
 
@@ -404,16 +408,16 @@ save_everything <- function(docket){
       ),
     .f = save_commentsOnId)
 
-  # if any documents were open for comment, recollect documents
-  if(sum(d$openForComment) > 0){
-    message(" | getting documents ")
-    documents2 <- get_documents(docket, api_keys = keys) |>
-      distinct()
-
-    documents <- full_join(documents, documents2)
-
-    save(documents, file = doc_file)
-  }
+  # # if any documents were open for comment, recollect documents
+  # if(sum(d$openForComment) > 0){
+  #   message(" | getting documents ")
+  #   documents2 <- get_documents(docket, api_keys = keys) |>
+  #     distinct()
+  #
+  #   documents <- full_join(documents, documents2)
+  #
+  #   save(documents, file = doc_file)
+  # }
 
 } else( message("| No documents for ", docket, " |") )
 }
