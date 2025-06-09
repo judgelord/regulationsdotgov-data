@@ -188,6 +188,8 @@ dockets_df <- tibble(
   docket = str_remove(dockets, ".*/")
 )
 
+# dockets_df$agency <- str_remove(dockets_df$docket, "-.*")
+
 # inspect agencies with dashes in their name
 dockets_df |>
   filter(str_detect(agency, "-|_")) |>
@@ -217,7 +219,7 @@ d2 <- dockets_df |>
 # PICK AN ORDER
 dockets_df %<>% ungroup()
 dockets_df %<>% arrange(rev(docket))
-dockets_df %<>% arrange(docket)
+# dockets_df %<>% arrange(docket)
 
 
 
@@ -229,6 +231,7 @@ max_number <- 1000000
 save_everything <- function(docket){
 
   message(" | ", docket, appendLF = F)
+  write(docket, file = here::here("save_everything stopped at"))
 
   # file path for document metadata
   docket_dir <- here::here("data", "metadata",
