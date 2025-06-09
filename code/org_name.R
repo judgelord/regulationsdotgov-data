@@ -1,7 +1,7 @@
 # this script extracts some basic org_name info, prior to hand coding
 #
 # # FIXME
-source("setup.R")
+# source("setup.R")
 #
 #
 # d <- filter(comments_all) %>%
@@ -12,18 +12,17 @@ source("setup.R")
 # # FIXME
 
 # start with existing self-identified organization
+
 d %<>% mutate(org_name = organization)
 
 # remove preface in title
 preface <- ".*ponsored by |.*ponsoring organization |.*ubmitted by |.*omments from |.*ampaign from |.*on behalf of "
 
 d %<>%
-  mutate(org_name =
-           ifelse(grepl(preface,title) &
-                    (is.na(org_name) | str_detect(org_name, "nknown") ),
-                  gsub(preface,"",title), org_name) ) %>%
-  mutate(org_name = ifelse( str_detect(org_name, "nknown|^NA$|^n/a$"),NA, org_name))
-
+  mutate(org_name = ifelse( str_detect(org_name, "nknown|^NA$|^n/a$"),NA, org_name),
+         org_name = coalesce(org_name, title),
+         org_name = str_replace(org_name, preface,"")
+  )
 
 # clean up
 d %<>% mutate(org_name = str_rm(org_name, "^comment from|^comment submitted by|^from|^re |- comment$|-comment$|comment$|^request for extension|^request for an extension"))

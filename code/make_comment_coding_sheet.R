@@ -2,18 +2,18 @@
 library(regulationsdotgov)
  #TODO write this script so that it just takes a vector of docket ids by replacing docket with dockets in the walk(dockets)
 dockets <- c(
-  "FDA-2021-N-0471",
-  "FDA-2024-D-2977",
-  "EPA-HQ-OLEM-2021-06090",
-  "EPA-HQ-OAR-2021-0643",,
-  "NRC-2019-0062",
-  "EERE-2010-BT-STD-0031"
+"TREAS-DO-2013-0005"
   # "USDA-2020-0009",
   # "NPS-2022-0004",
   # "IRS-2024-0026",
   # "BSEE-2015-0002",
   # "EPA-HQ-OW-2022-0901"
 )
+
+dockets <- ej_framed_dockets
+
+# INVESTIGATE
+dockets <- dockets[which(!dockets == "EPA-HQ-OAR-2004-0394")]
 
 agencies <- str_extract(dockets, "[A-Z]+")
 
@@ -22,17 +22,10 @@ walk(here::here("data", "datasheets", agencies), dir.create)
 
 for(i in dockets){
 
+#  docket <- dockets[1]
 docket <- i
+message(i)
 agency <- str_extract(docket, "[A-Z]+") # str_remove(dockets, "-.*") #FIXME WHICH ONE DO WE WANT
-
-done <- here::here("data", "datasheets", agency) |>
-  list.files() |>
-  str_remove("_org_comments.*")
-
-message(docket, " already in datasheets folder? ", docket %in% done)
-
-#FIXME SKIP ONES ALREADY DONE
-if(docket %in% done) next
 
 ####################
 # Comment metadata #
@@ -43,15 +36,10 @@ comments_files <- list.files(
   recursive = T,
   full.names = T)
 
-if(length(comments_files) == 0) {message("missing")}
-
-if(length(comments_files) == 0) next
-
 load(comments_files[1])
 
-
 # init
-comments_combined <- comments
+comments_combined <- comments  |> select(-objectId)
 
 # loop to combine
 for(j in comments_files){
@@ -59,7 +47,21 @@ for(j in comments_files){
   comments_combined <<- full_join(comments_combined, comments)
 }
 
-message(nrow(comments_combined) -1, " comments")
+comments_combined %<>%
+  # drop columns that cause problems for merge because they may not be the same in document_details
+  select(-any_of(c("objectId", "lastpage")))
+
+  comments_combined %<>%
+    select(-any_of(c("objectId",
+                   "attachments",
+                   "documentType",
+                   #postedDate,
+                   #title,
+                   "docketId", # WHY IS THIS NA
+                   "withdrawn",
+                   "openForComment")))
+
+
 
 
 ###########
@@ -76,18 +78,25 @@ load(comment_details_files[1])
 # init
 comment_details_combined <- comment_details
 
+
 # loop to combine
 for(j in comment_details_files){
   load(j)
-  comment_details_combined <<- full_join(comment_details_combined, comment_details)
+  comment_details_combined <<- full_join(
+    comment_details_combined,
+    comment_details |> select(-objectId))
 }
 
-comment_details_combined %<>% full_join(comments_combined) # |> rename(document_subtype = subtype))
-
-d <- comment_details_combined |> group_by(id) |>
+d <- comment_details_combined |>
+  full_join(comments_combined ) |>
+  #full_join(comments_combined, by = "id") |>
+  group_by(id) |>
   mutate(attachment_count = unlist(attachments) |> length()/3,
          attachment_urls = unlist(attachments) |> paste(collapse  = ";", sep = ";") |> str_remove(";.*") ) |>
   ungroup()
+
+d |> select(contains("."))
+
 
 head(d$attachment_urls)
 
@@ -260,7 +269,7 @@ d$org_name%<>% str_squish()
 save(d, file = here::here("data", "temp_comments4datasheet.Rdata"))
 # load(here::here("data", "comments4datasheets.Rdata"))
 
-d %<>% mutate(number_of_comments_received = duplicate_comments)
+d %<>% mutate(number_of_comments_received = duplicate_comments + 1)
 
 # filter down to org comments
 d %<>%
@@ -296,11 +305,11 @@ d %<>%
   mutate(comment_url = str_c("https://www.regulations.gov/comment/",
                              document_id),
          comment_on_document_url = str_c("https://www.regulations.gov/document/",
-                                         comment_on_document_id),
+                             comment_on_document_id),
          docket_url = str_c("https://www.regulations.gov/docket/",
                             document_id %>% str_remove("-[0-9]*$")))
 
-d$attachment_txt[1] #TODO
+# d$attachment_txt[1] #TODO
 d$comment_url[1]
 d$comment_on_document_url[1]
 d$docket_url[1]
@@ -314,14 +323,12 @@ d %<>% select(
   docket_url,
   #docket_title,
   comment_on_document_url,
-  comment_on_id,
   document_id,
   posted_date,
   comment_url,
   comment_text,
   #attachment_txt,
   organization,
-  any_of(c('city','country','firstName','lastName','govAgency','govAgencyType','stateProvinceRegion','submitterRep','subtype','category','zip','address1','address2','docAbstract','pageCount')),
   comment_title,
   attachment_count,
   attachment_urls,
@@ -329,29 +336,35 @@ d %<>% select(
   org_name)
 
 # add blanks
-d %<>% mutate(position = "",
-              position_certainty = "",
-              comment_type = "",
+d %<>% mutate(comment_type = "",
               comment_signers = "",
+              org_name_short = "",
+              org_type = "",
+              org_geography	= "",
+              position = "",
+              position_certainty = "",
               coalition_comment = "",
               coalition_type = "",
               # org_name = organization, # run scratchpad/orgnames.R until this is a function
-              org_name_short = "",
-              org_type = "",
               ask = "",
               ask1 = "",
               ask2 = "",
               ask3 = "",
+              asks_procedural = "",
+              ask_geography = "",
               success = "",
               success_certainty = "",
               success1 = "",
               success2 = "",
               success3 = "",
+              success_procedural = "",
               response = "",
               pressure_phrases = "",
               accept_phrases = "",
               compromise_phrases = "",
               reject_phrases = "",
+              mass_platform = "",
+              mass_transparent = "",
               notes = "")
 
 names(d)
@@ -376,7 +389,7 @@ write_comment_sheets <- function(docket){
     write_csv(file = here::here("data", "datasheets",
                                 agency,
                                 #str_extract("^[A-Z]"), # agency
-                                str_c(docket, "_org_comments.csv")))
+                                str_c(docket, "_org_comments BLANK.csv")))
 }
 
 
@@ -385,6 +398,70 @@ d %<>% mutate(comment_type = ifelse(number_of_comments_received > 99, "mass", co
 
 unique(d$docket_id)
 
+d %<>% drop_na(docket_id)
+
+d %<>% filter(docket_id == i)
+
 walk(unique(d$docket_id), write_comment_sheets)
 
+# STRAIGHT TO GOOGLE DRIVE
+
+# create a blank sheet with named as the docket_id
+library(googlesheets4)
+ss <- gs4_create(name = paste0(unique(d$docket_id), "_org_comments BLANK"),
+
+           sheets = unique(d$docket_id) )
+
+d |>
+  sheet_write(ss,
+              sheet = unique(d$docket_id))
+
+
+# Find the proper folder based on the agency name
+library(googledrive)
+
+folder_id <- drive_find(n_max = 10,
+                        type = "folder",
+                        pattern = agency)$id
+folder_id
+# folder_id <- "1q4FhGfqziamvDoogM-d__Xfv2za0KU2M"
+
+# put in the propoer folder
+drive_mv(file = ss,
+         path = as_id(folder_id),
+          overwrite = T)
+
+# remove from list when done
+dockets <- dockets[which(!dockets == i)]
+
+
 }
+
+# make a table of the docket ids and titles
+load("../keys.rda")
+d <- map_dfr(dockets, get_documents, api_keys = keys)
+
+
+ d |>
+   drop_na(commentStartDate) |>
+   filter(documentType == "Proposed Rule") |>
+   distinct(docketId, title) |>
+   group_by(docketId) |>
+   mutate(title = paste(title, sep = ";", collapse = ";")) |>
+   distinct(docketId, title) |>
+   write_csv(here::here("data", "docket_titles_to_code-EJframed.csv"))
+
+
+
+ # TEMP FIX
+ if(F){
+ ss <- drive_find(n_max = 500,
+                  type = "spreadsheet",
+                  " _org_comments")
+
+fix <- function(id, name){
+   drive_rename(id, name = str_replace(name, " _org_comments", "_org_comments"))
+}
+
+walk2(ss$id, ss$name, .f = fix)
+ }
