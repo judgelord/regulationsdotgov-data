@@ -27,5 +27,6 @@ This repository contains documentation and code for constructing a directory of 
             - [comment_id1_2].doc 
             - [comment_id2_1].jpg  
             - [comment_id2_2].jpg
-- htm  (a mirror of files if we can download files in htm --- I'm not sure this is possible, but we know they have OCRd everything) 
-- txt (a mirror of 'files' with readable files converted to txt)
+- htm  (a mirror of `files` available in htm)
+- md (a mirror of 'files' with readable files converted to .md)
+- txt (a mirror of 'files' with readable files converted to .txt)
