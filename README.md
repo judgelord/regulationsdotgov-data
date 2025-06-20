@@ -28,5 +28,5 @@ This repository contains documentation and code for constructing a directory of 
             - [comment_id2_1].jpg  
             - [comment_id2_2].jpg
 - htm  (a mirror of `files` available in htm)
-- md (a mirror of 'files' with readable files converted to .md)
-- txt (a mirror of 'files' with readable files converted to .txt)
+- md (a mirror of `files` with readable files converted to .md)
+- txt (a mirror of `files` with readable files converted to .txt)
