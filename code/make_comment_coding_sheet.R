@@ -1,8 +1,53 @@
  source("setup.R")
 library(regulationsdotgov)
+#
+#  load( here::here("data", "dockets_to_make_comment_coding_sheets_for.rda"))
+#
+#  # for all dockets for an agency
+#  agency <- "FERC"
+# load(here::here("data", "metadata", agency, "FERC_documents.rda"))
+
+# count(documents, documentType)
+
+# d <- documents |>
+#   select(-title) |>
+#   distinct() |>
+#   filter(documentType %in% c("Rule", "Proposed Rule")) |>
+#   # FERC lacks docket ids
+#   mutate(docket2 = str_remove(id, "-[0-9]*$"),
+#          docketId = coalesce(docketId, docket2)) |>
+#   group_by(docketId) |>
+#   mutate(types = paste( unique(documentType), collapse = "," )  ) |>
+#   filter(str_detect(types, ",")) %>%
+#   add_count(docketId) |>
+#   filter(n>1) |>
+#   select(docketId, n, everything() ) |>
+#   arrange(rev(id))
+# d$commentStartDate
+
+# dockets = unique(d$docketId)
+
  #TODO write this script so that it just takes a vector of docket ids by replacing docket with dockets in the walk(dockets)
 dockets <- c(
-"TREAS-DO-2013-0005"
+  #"FERC-2010-0870"
+  # "AD21-9-000",
+  "FDA-2010-N-0568"
+ # "FDA-2013-N-0227",# no final rule as of 2-17-2026
+ # "FDA-2024-N-5471"# no final rule as of 2-17-2026
+  #"FDA-2020-N-1395",
+  #"FDA-2022-N-3262",
+  # "FERC-2024-1317",
+  # "FERC-2024-0618",
+  # "FERC-2023-1408",
+  # "FERC-2024-0178",
+  # "FERC-2024-0209",
+  # "FERC-2023-0749",
+  # "FERC-2023-0848",
+  # "FERC-2023-0206",
+  # "FERC-2023-0106",
+  # "FERC-2022-1072",
+  # "FERC-2022-0879"
+ # "TREAS-DO-2013-0005"
   # "USDA-2020-0009",
   # "NPS-2022-0004",
   # "IRS-2024-0026",
@@ -10,15 +55,59 @@ dockets <- c(
   # "EPA-HQ-OW-2022-0901"
 )
 
-dockets <- ej_framed_dockets
+#FAA-2013-0259 has a ton of comment files, like over 1000?
+
+# dockets <- ej_framed_dockets
+
+# save to re-load
+# save(dockets, file = here::here("data", "dockets_to_make_comment_coding_sheets_for.rda"))
+
+
+
 
 # INVESTIGATE
-dockets <- dockets[which(!dockets == "EPA-HQ-OAR-2004-0394")]
+dockets <- dockets[which(!dockets %in% c("EPA-HQ-OAR-2004-0394",
+                                         "EPA-HQ-OAR-2003-0048",
+                                         "FWS-HQ-MB-2019-0103"))]
 
-agencies <- str_extract(dockets, "[A-Z]+")
 
+agencies <- str_extract(dockets, "[A-Z]+") |> unique()
+
+
+
+########## AGENCY FOLDERS ###
 # create directories for each agency
 walk(here::here("data", "datasheets", agencies), dir.create)
+
+# create drive folders for each agency
+email = "devin.jl@gmail.com"
+library(googledrive)
+drive_auth(email = email)
+library(googlesheets4)
+gs4_auth(email = email)
+
+
+########## AGENCY DRIVE FOLDERS IF NEEDED ###
+if(F){
+  for(agency in agencies){
+    tryCatch(
+  drive_mkdir(agency,
+              path = as_id("1mKsuqeXk6uVYFNt_YomT-zqYwvKd5OTb"), # datasheets folder id
+              overwrite = F
+              ),
+  error = function(e) print(e),
+  finally = next
+  )
+  }
+}
+
+######################
+
+################################################################################################
+
+####################
+# Comment metadata #
+####################
 
 for(i in dockets){
 
@@ -27,16 +116,19 @@ docket <- i
 message(i)
 agency <- str_extract(docket, "[A-Z]+") # str_remove(dockets, "-.*") #FIXME WHICH ONE DO WE WANT
 
-####################
-# Comment metadata #
-####################
+
+
 comments_files <- list.files(
   here::here("data", "metadata",agency,docket),
   pattern = "comments.rda",
   recursive = T,
   full.names = T)
 
+if(length(comments_files) == 0){next}
+
 load(comments_files[1])
+
+if(nrow(comments) < 2){next}
 
 # init
 comments_combined <- comments  |> select(-objectId)
@@ -46,6 +138,11 @@ for(j in comments_files){
   load(j)
   comments_combined <<- full_join(comments_combined, comments)
 }
+
+comments_combined %<>% drop_na(id)
+
+if(nrow(comments_combined)<1){next}
+
 
 comments_combined %<>%
   # drop columns that cause problems for merge because they may not be the same in document_details
@@ -95,6 +192,12 @@ d <- comment_details_combined |>
          attachment_urls = unlist(attachments) |> paste(collapse  = ";", sep = ";") |> str_remove(";.*") ) |>
   ungroup()
 
+
+if(nrow(d) < 2){
+  dockets <- dockets[which(!dockets == i)]
+  next
+  }
+
 d |> select(contains("."))
 
 
@@ -118,13 +221,18 @@ namingthings <- function(x){
   # standardize
 d %<>% namingthings()
 
-
+if(!"title" %in% names(d)){next}
 
 # if organization is missing use title
 if(!"organization" %in% names(d)){
   d %<>% mutate(organization = title)
 }
 names(d)
+
+# some are missing comment? Why? e.g., "EPA-R09-OAR-2006-0281"
+if(!"comment" %in% names(d)){
+  d$comment = ""
+}
 
 d %<>% mutate(organization = coalesce(organization, title),
               comment_text = comment,
@@ -134,13 +242,16 @@ d %<>% mutate(organization = coalesce(organization, title),
 nonorgs <- "^personal$|illegible|default organization name|^anonymous|individual$|myself|^mr$|^ms$|^mrs$|^mr.$|^ms.$|^mrs.$|me, myself, and i|not applicable|a youtuber|retired federal employee|the human race|the american people$|^the people$|truck driver$|^human race|^attorney at law|^na$|n/a|no name|^unknown|^none$|^none |noneindividual|^my |^myself|^self$|seslf|private citizen|^citizen.$|^select$|^attorney$| owner$|christian$|catholic$|please select|the dodo|^other$|individual$|just me|anonymous|retired$|citizen$|citzen|^citizens$|citizen/consumer|^citizen, |^citizen of|^citizen at|^citizen -|^citizen and|me, myself and i|me myself and i|^no organization|concerned american|self.employed|self and|regulations.gov|public comment|private party|private owner|private citizan|^private$|personal (comment|opinion)| taxpayer$| voter$| human$|^concerned citizens$|^consumer$| consumer$| mom"
 
 
-d %<>% filter(attachment_count > 0,
+d %<>% filter(attachment_count > 0 | attachment_urls != "",
               !str_detect(organization, nonorgs),
               !str_detect(organization, "^.\\. |illegible|surname|last name|forename|no name|^unknown$"),
               !str_detect(title, "illegible|surname|last name|forename|no name") )
 dim(d)
 
-
+if(nrow(d) < 2){
+  dockets <- dockets[which(!dockets == i)]
+  next
+}
 
 # apply auto-coding
 #FIXME with updated org_names from hand-coding
@@ -322,9 +433,9 @@ d %<>% select(
   docket_id,
   docket_url,
   #docket_title,
-  comment_on_document_url,
   document_id,
   posted_date,
+  comment_on_document_url,
   comment_url,
   comment_text,
   #attachment_txt,
@@ -338,14 +449,18 @@ d %<>% select(
 # add blanks
 d %<>% mutate(comment_type = "",
               comment_signers = "",
+              comment_history = "",
+              comment_represents = "",
               org_name_short = "",
               org_type = "",
               org_geography	= "",
+              org_stake = "",
               position = "",
               position_certainty = "",
               coalition_comment = "",
               coalition_type = "",
               # org_name = organization, # run scratchpad/orgnames.R until this is a function
+              ask_geography = "",
               ask = "",
               ask1 = "",
               ask2 = "",
@@ -367,6 +482,16 @@ d %<>% mutate(comment_type = "",
               mass_transparent = "",
               notes = "")
 
+d %<>% select(comment_on_document_url,
+       comment_url,
+       comment_text,
+       comment_title,
+       attachment_count,
+       attachment_urls,
+       number_of_comments_received,
+       organization,
+       everything() )
+
 names(d)
 
 # unique(d$organization)
@@ -382,6 +507,8 @@ if (!dir.exists(here::here("data", "datasheets") ) ){
   dir.create( here::here("data", "datasheets") )
 }
 
+# arrange by document id, but because 10000 is alphabetically before 9999, we also sort by string length
+d %<>% arrange(document_id, nchar(document_id))
 
 write_comment_sheets <- function(docket){
   d %>%
@@ -401,6 +528,17 @@ unique(d$docket_id)
 d %<>% drop_na(docket_id)
 
 d %<>% filter(docket_id == i)
+
+if(nrow(d) < 2){
+  dockets <- dockets[which(!dockets == i)]
+  next
+}
+
+# trim comment text to 50,000 characters, the google sheet limit for a cell
+# d |> filter(nchar(comment_text) > 50) |> pull(comment_text) |> str_extract(".{0,50000}")
+
+d %<>% mutate(comment_text = str_extract(comment_text, ".{0,50000}") )
+
 
 walk(unique(d$docket_id), write_comment_sheets)
 
@@ -422,11 +560,14 @@ library(googledrive)
 
 folder_id <- drive_find(n_max = 10,
                         type = "folder",
-                        pattern = agency)$id
+                        pattern = paste0("^", agency,"$"))$id
 folder_id
 # folder_id <- "1q4FhGfqziamvDoogM-d__Xfv2za0KU2M"
 
-# put in the propoer folder
+# if can't find it, skip for now
+if(length(folder_id) < 1){next}
+
+# put in the proper folder
 drive_mv(file = ss,
          path = as_id(folder_id),
           overwrite = T)
@@ -434,34 +575,12 @@ drive_mv(file = ss,
 # remove from list when done
 dockets <- dockets[which(!dockets == i)]
 
+# save so we don't do it again
+save(dockets, file = here::here("data", "dockets_to_make_comment_coding_sheets_for.rda"))
+
 
 }
 
-# make a table of the docket ids and titles
-load("../keys.rda")
-d <- map_dfr(dockets, get_documents, api_keys = keys)
 
 
- d |>
-   drop_na(commentStartDate) |>
-   filter(documentType == "Proposed Rule") |>
-   distinct(docketId, title) |>
-   group_by(docketId) |>
-   mutate(title = paste(title, sep = ";", collapse = ";")) |>
-   distinct(docketId, title) |>
-   write_csv(here::here("data", "docket_titles_to_code-EJframed.csv"))
-
-
-
- # TEMP FIX
- if(F){
- ss <- drive_find(n_max = 500,
-                  type = "spreadsheet",
-                  " _org_comments")
-
-fix <- function(id, name){
-   drive_rename(id, name = str_replace(name, " _org_comments", "_org_comments"))
-}
-
-walk2(ss$id, ss$name, .f = fix)
- }
+##

@@ -219,14 +219,17 @@ d2 <- dockets_df |>
 # PICK AN ORDER
 dockets_df %<>% ungroup()
 dockets_df %<>% arrange(rev(docket))
-# dockets_df %<>% arrange(docket)
+#dockets_df %<>% arrange(docket)
 
-
+# temporarly remove some that may be causing errors
+dockets_df %<>% filter(!docket %in% c("FDA-2024-N-2910",
+                                      "FDA-1999-H-0070" # 502 error
+                                      ))
 
 ########################
 # FUNCTION            #
 ########################
-max_number <- 1000000
+max_number <- 10000 # FIXME
 
 save_everything <- function(docket){
 

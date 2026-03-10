@@ -10,13 +10,18 @@ library(regulationsdotgov)
 
   # banned words
   library(googlesheets4)
-  searchTerm = read_sheet("1LLKWDHiwnVEpvlqurI1t7NNHmdrk2liXPd-FZkNrvW0") |>
+gs4_auth(email = "devin.jl@gmail.com")
+  # big list
+# searchTerm = read_sheet("1LLKWDHiwnVEpvlqurI1t7NNHmdrk2liXPd-FZkNrvW0") |>
+# small list
+  searchTerms = read_sheet("1LLKWDHiwnVEpvlqurI1t7NNHmdrk2liXPd-FZkNrvW0", sheet = "Racialized Terms")|>
     drop_na(term) |>
     filter(!str_detect(term, "/")) |>
     pull(term) |>
     unique()
 
-  searchTerm <- searchTerm[!searchTerm %in% c("gender identity", "definition", "expression", "sex", "sexuality",
+  # run into problems
+  searchTerms <- searchTerms[!searchTerms %in% c("American Indian","Africans", "gender identity", "definition", "expression", "sex", "sexuality",
                                               "accessible", "entitlement", "equality",
                                               "genders", "anglo-saxon",
                                               "women",
@@ -29,16 +34,47 @@ library(regulationsdotgov)
 
 
 
-  documents = c("documents", "comments")
-  # documents = "comments"
+  type = c("documents", "comments")
+  # type = "documents"
+  # type = "comments"
+  # searchTerm = searchTerms[21]
 
 
-  search_to_rda <- function(searchTerm, documents, lastModifiedDate = Sys.Date() ){
+  search_to_rda <- function(searchTerm, type, lastModifiedDate = Sys.Date() ){
 
     directory <- here::here("data", "search", #subdir,
                             searchTerm)
     dir.create(directory)
-    file <- here::here(directory, paste0(searchTerm, "_", documents, ".rda"))
+    file <- here::here(directory, paste0(searchTerm, "_", type, ".rda"))
+
+    if( file.exists(file) ){
+      message(paste(searchTerm, type, "search data exist"))
+      load(file)
+      if(type == "documents"){
+        date <- max(documents$date)
+      }
+      if(type == "comments"){
+        date <- max(comments$date)
+      }
+      if(date < as.Date("2026-01-01") ){
+        d <- get_searchTerm(searchTerm,
+                            lastModifiedDate = lastModifiedDate,
+                            type,
+                            api_keys = keys)
+
+        if(type == "comments"){
+          comments <- full_join(comments, d) |> distinct()
+
+          save(comments, file = file)
+        }
+        if(type == "documents"){
+          documents <- full_join(documents, d) |> distinct()
+
+          save(documents, file = file)
+        }
+      }
+    }
+
 
     if( !file.exists(file) ){
 
@@ -48,18 +84,18 @@ library(regulationsdotgov)
 
       d <- get_searchTerm(searchTerm,
                           lastModifiedDate = lastModifiedDate,
-                          documents,
+                          type,
                           api_keys = keys)
 
       message(min(d$postedDate))
 
 
-if(documents == "comments"){
+if(type == "comments"){
       comments <- d |> distinct()
 
       save(comments, file = file)
 }
-      if(documents == "documents"){
+      if(type == "documents"){
         documents <- d |> distinct()
 
         save(documents, file = file)
@@ -68,9 +104,9 @@ if(documents == "comments"){
   }
 
 # map over search terms for each document type
-  for(documents in documents){
-    purrr::walk(searchTerm,
-                documents,
+  for(type in type){
+    purrr::walk(searchTerms,
+                type,
                 #subdir = subdir,
                 #lastModifiedDate = "2025-02-02T04:59:59Z",
                 .f = search_to_rda) #FIXME Possiblly ?

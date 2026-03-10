@@ -74,7 +74,7 @@ agencies %<>% rev(agencies)
 
 
 # or select a new agency
-agency <- "FCC"
+agency <- "FERC"
 
 # AGENCIES MISSING DATA THAT I KNOW IS ON REGULATIONS.GOV
 # (see minimal counts of documents in data/missing.rda)

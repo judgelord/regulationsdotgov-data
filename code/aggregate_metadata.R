@@ -1,13 +1,34 @@
 library(tidyverse)
 
+# agencies with folders
 agencies <- list.dirs(here::here("data", "metadata"), recursive = F) |>
-  str_remove(".*/") |> rev()
+  str_remove(".*/") #|> rev()
 
 # faster not to count the folders
 quite = T
 
+# a function to get document info for existing aggregated metadata files
+get_metadata_document_info <- function(agency){
+d <- here::here("data", "metadata", agency, paste0(agency, "_documents.rda")) |>
+  file.info()
+
+# add agency variable
+d <- as_tibble(d) |> mutate(agency = agency)
+
+return(d)
+}
+
+# dataframe of document info for agency-level aggregated metadata
+metadata_document_info <- map_dfr(agencies, get_metadata_document_info)
+
+# agencies missing files
+missing_metadata_document_info <- agencies[!agencies %in% metadata_document_info$agency]
+
+# arrange to start with those last modified least recently
+agencies <- metadata_document_info |> arrange(mtime)
+
 # Aggregate docket-level documents metadata to agency level and save in agency folder
-for(agency in agencies){
+for(agency in agencies$agency){
 
   # document metadata in docket folders
   files <- list.files(pattern = paste0(
